@@ -1,0 +1,45 @@
+package com.appg.Komca.common.bean.db;
+
+/**
+ * tblChatVoteItem
+ * 
+ * @author inyeong
+ *
+ */
+public class ChatVoteItemBean
+{
+	private int		voteNumber;
+	private int		itemNumber;
+	private String	itemTitle;
+
+	public int getVoteNumber()
+	{
+		return voteNumber;
+	}
+
+	public void setVoteNumber(int voteNumber)
+	{
+		this.voteNumber = voteNumber;
+	}
+
+	public int getItemNumber()
+	{
+		return itemNumber;
+	}
+
+	public void setItemNumber(int itemNumber)
+	{
+		this.itemNumber = itemNumber;
+	}
+
+	public String getItemTitle()
+	{
+		return itemTitle;
+	}
+
+	public void setItemTitle(String itemTitle)
+	{
+		this.itemTitle = itemTitle;
+	}
+
+}

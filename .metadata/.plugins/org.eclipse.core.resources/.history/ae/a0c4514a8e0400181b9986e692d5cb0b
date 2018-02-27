@@ -1,0 +1,1287 @@
+package com.appg.Komca.controller.api;
+
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import com.appg.Komca.common.bean.DataMap;
+import com.appg.Komca.common.bean.RetJsonBean;
+import com.appg.Komca.common.constants.Constants;
+import com.appg.Komca.common.exception.DefSeCode;
+import com.appg.Komca.common.exception.ServiceException;
+import com.appg.Komca.common.upload.FileBean;
+import com.appg.Komca.common.upload.FileUpload;
+import com.appg.Komca.common.util.CookieUtil;
+import com.appg.Komca.controller.BaseController;
+import com.appg.Komca.service.SvcUpso;
+
+@Controller
+@RequestMapping("/ApiUpso")
+public class ApiUpsoController extends BaseController {
+	
+	private final static Log	logger	= LogFactory.getLog(ApiUserController.class);
+
+	@Autowired	private SvcUpso				svcUpso;
+	
+	
+	/**
+	 * 업소 리스트 (검색시)
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/searchUpsoList")
+	public RetJsonBean searchUpsoList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : searchUpsoList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("START_CNT_MON",	procData.getString("startCntMon"));
+		paramsMap.put("END_CNT_MON",	procData.getString("endCntMon"));
+		paramsMap.put("FIND_NM",		procData.getString("FIND_NM"));
+		
+		String startCntMon = paramsMap.getString("startCntMon");
+		String endCntMon   = paramsMap.getString("endCntMon");
+		
+		/* ############ COOKIE  ############ */
+		String gibu   = procData.getString("GIBU");
+		String userID   = procData.getString("USER_ID");
+		paramsMap.put("GIBU", gibu);
+		paramsMap.put("USER_ID", userID);
+		
+		try{
+			
+			if(userID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+				
+			// 미납업소 기간설정 유효성 체크
+			if(!startCntMon.isEmpty()) {
+				if(endCntMon.isEmpty())	{
+					throw new ServiceException(-0002, "설정기간이 잘못되었습니다.");
+				}
+				
+			} else if(!endCntMon.isEmpty()) {
+				if(startCntMon.isEmpty()) {
+					throw new ServiceException(-0002, "설정기간이 잘못되었습니다.");
+				}
+				
+			} else if(!startCntMon.isEmpty() && !endCntMon.isEmpty()) {
+				if(Integer.parseInt("startCntMon") > Integer.parseInt("endCntMon")) {
+					throw new ServiceException(-0002, "설정기간이 잘못되었습니다.");
+				}
+			
+			// 설정한 미납업소기간이 없을경우 세팅
+			} else {
+				paramsMap.put("startCntMon", "6");
+				paramsMap.put("endCntMon", "999");
+			}
+			
+			List<DataMap> UpsoList = svcUpso.getSearchUpsoList(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", UpsoList);
+			
+			/*// 정부 3.0 개발예정업소
+			if(govUpsoYn.equals("Y")) {
+				
+				 ############ 필수 Parameter 체크  ############ 
+				if(siGunGu.isEmpty()) {
+					throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+				}
+				
+				DataMap govUpsoList = svcUpso.getGovUpsoList(addr, upsoNm, siGunGu);
+			}
+			
+			// 신규개발(기타업소)
+			if(newUpsoYn.equals("Y")) {
+				DataMap newUpsoList = svcUpso.getNewUpsoList(startCntMon, endCntMon, addr, upsoNm, bstypCd, gibu, userID);
+			}*/
+			
+			
+		}
+		catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 업소 리스트 (지도)
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/UpsoList")
+	public RetJsonBean UpsoList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : UpsoList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ 필터 Parameter ############ */
+		
+		paramsMap.put("allUpsoYn",		procData.getString("allUpsoYn"));
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("startCntMon",	procData.getString("startCntMon"));
+		paramsMap.put("endCntMon",		procData.getString("endCntMon"));
+		paramsMap.put("addr",			procData.getString("addr"));
+		paramsMap.put("upsoNm",			procData.getString("upsoNm"));
+		paramsMap.put("siGunGu",		procData.getString("siGunGu"));
+		paramsMap.put("LAT1",			procData.getString("LAT1"));
+		paramsMap.put("LAT2",			procData.getString("LAT2"));
+		paramsMap.put("LNG1",			procData.getString("LNG1"));
+		paramsMap.put("LNG2",			procData.getString("LNG2"));
+		
+		String startCntMon = paramsMap.getString("startCntMon");
+		String endCntMon   = paramsMap.getString("endCntMon");
+		
+		if(paramsMap.get("allUpsoYn").equals("Y")) {
+			paramsMap.put("stanUpsoYn",		"Y");
+			paramsMap.put("govUpsoYn",		"Y");
+			paramsMap.put("newUpsoYn",		"Y");
+		} else {
+			paramsMap.put("stanUpsoYn",		procData.getString("stanUpsoYn"));
+			paramsMap.put("govUpsoYn",		procData.getString("govUpsoYn"));
+			paramsMap.put("newUpsoYn",		procData.getString("newUpsoYn"));
+		}
+				
+		/* ############ COOKIE  ############ */
+		String gibu   = procData.getString("GIBU");
+		String userID   = procData.getString("USER_ID");
+		paramsMap.put("GIBU", gibu);
+		paramsMap.put("USER_ID", userID);
+		
+		try{
+			
+			if(userID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+				
+			// 미납업소 기간설정 유효성 체크
+			
+			if(startCntMon == null || endCntMon == null)
+			{
+				paramsMap.put("startCntMon", "6");
+				paramsMap.put("endCntMon", "999");
+			}
+			
+			List<DataMap> UpsoList = svcUpso.getUpsoList(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", UpsoList);
+			
+		}
+		catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+
+	/**
+	 * 업소 상세 
+	 * ### 신규(기타)업소, 정부3.0업소는 제외한다.
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/upsoDetail")
+	public RetJsonBean upsoDetail(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : upsoDetail");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		String upsoCD		= procData.getString("UPSO_CD");
+		String startCntMon	= procData.getString("START_CNT_MON");
+		String endCntMon	= procData.getString("END_CNT_MON");
+		
+		/* ############ COOKIE  ############ */
+		String gibu   = procData.getString("GIBU");
+		String userID   = procData.getString("USER_ID");
+		
+		try{
+			
+			if(userID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			if(endCntMon.isEmpty()) {
+				endCntMon = "6";
+			}
+			
+			// 업소정보 조회(업소정보, 원장정보)
+			DataMap UpsoDetail = svcUpso.getUpsoDetail(upsoCD, startCntMon, endCntMon);
+			retJsonBean = super.makeResultJson(1, "", UpsoDetail.getDataMap("upsoInfoDetail"), UpsoDetail.getDataMapList("upsoNoteDetail"));
+		}
+		catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 방문업소 리스트  및 상세 조회	 
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/upsoVisitList")
+	public RetJsonBean upsoVisitList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : upsoVisitList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("UPSO_CD"		, procData.getString("UPSO_CD"));
+		paramsMap.put("START_DAY"	, "19990101");
+		
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			List<DataMap> upsoVisitList = svcUpso.getUpsoVisitList(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", upsoVisitList);
+		}
+		catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 정부 3.0업소 상세 사용하나?
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/upsoGovDetail")
+	public RetJsonBean upsoGovDetail(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : upsoGovDetail");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("ROW_NUM"		, procData.getString("ROW_NUM"));
+		paramsMap.put("GBN"			, procData.getString("GBN"));
+		paramsMap.put("YUHEONG_GBN", procData.getString("YUHEONG_GBN"));
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			DataMap upsoGovDetail = svcUpso.getUpsoGovDetail(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", upsoGovDetail);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 방문업소 내역 상세조회(사용안함) -> 방문업소 내역 리스트 조회 api로 통합
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/upsoVisitDetail")
+	public RetJsonBean upsoVisitDetail(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		DataMap data 	  = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : upsoVisitDetail");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("UPSO_CD"		, procData.getString("UPSO_CD"));
+		paramsMap.put("START_DAY"	, "19990101");
+		paramsMap.put("VISIT_DAY"	, procData.getString("VISIT_DAY"));
+		paramsMap.put("JOB_GBN"		, procData.getString("JOB_GBN"));
+		paramsMap.put("VISIT_SEQ"	, procData.getString("VISIT_SEQ"));
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			data = svcUpso.getUpsoVisitDetail(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", data);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	
+	/**
+	 * 방문업소 등록
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws JSONException 
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/insertUpsoVisit")
+	public RetJsonBean insertUpsoVisit(HttpServletRequest request, HttpServletResponse response) throws JSONException {
+		
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData   = super.makeProcessData(request, response);
+		DataMap paramsMap  = new DataMap();
+		DataMap paramsMap2 = new DataMap();
+		List<DataMap> paramsList = null;
+		DataMap data	   = new DataMap();  
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : insertUpsoVisit");
+			logger.info("Parameter : " + procData);
+		}
+		JSONArray arr  = new JSONArray(procData.getString("DETAIL"));
+		
+		/* ############ 필수 Parameter ############ */
+		paramsMap.put("UPSO_CD"		, procData.getString("UPSO_CD"));
+		paramsMap.put("JOB_GBN"		, procData.getString("JOB_GBN"));
+		paramsMap.put("CONSPRES"	, procData.getString("CONSPRES"));
+		
+		//paramsMap.put("ACT_TYPE"	, procData.getString("ACT_TYPE")); // Detail에 대한 삭제/추가  구분
+		
+		/* ############ Parameter ############ */
+		paramsMap2.put("LAT"		, procData.getString("LAT")); 	//위도
+		paramsMap2.put("LNG"		, procData.getString("LNG"));	//경도
+		paramsMap2.put("TITLE"		, procData.getString("TITLE"));
+		paramsMap2.put("REMARK"		, procData.getString("REMARK"));
+		paramsMap2.put("VISIT_NUM"	, procData.getString("VISIT_NUM"));
+		/*paramsMap2.put("FILE_NM"	, procData.getString("FILE_NM"));
+		paramsMap2.put("FILES"		, procData.getString("FILES")); // BLOB
+		paramsMap2.put("FILE_SIZE"	, procData.getString("FILE_SIZE"));*/
+		paramsMap2.put("VISIT_SEQ"	, procData.getString("VISIT_SEQ"));
+		paramsMap.put("ACT_TYPE"	, procData.getString("ACT_TYPE"));
+		paramsMap.put("ACT_TYPE"	, procData.getString("ACT_TYPE"));
+		paramsMap.put("STAFF_CD"	, procData.getString("STAFF_CD")); // 지부장, 관리자가 선택한 직원 사번 -> 선택한 직원이 없을 경우는 USER_ID와 동일
+		
+		//paramsList.addAll(procData.getDataMapList("DETAIL"));
+		
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			DataMap ret = svcUpso.insertUpsoVisit(paramsMap, paramsMap2, arr);
+			
+			retJsonBean = super.makeResultJson(1, "등록되었습니다.", ret);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 고소내역 및 리스트
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/upsoAccuList")
+	public RetJsonBean upsoAccuList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : upsoAccuList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("UPSO_CD"		, procData.getString("UPSO_CD"));
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			List<DataMap> upsoAccuList = svcUpso.getUpsoAccuList(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", upsoAccuList);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 고소 사건 진행과정 리스트
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/upsoAccuMemoList")
+	public RetJsonBean upsoAccuMemoList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : upsoAccuMemoList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("ACCU_DAY"	, procData.getString("ACCU_DAY"));
+		paramsMap.put("ACCU_NUM"	, procData.getString("ACCU_NUM"));
+		paramsMap.put("ACCU_BRAN"	, procData.getString("ACCU_BRAN"));
+		
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			List<DataMap> upsoAccuMemoList = svcUpso.getUpsoAccuMemoList(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", upsoAccuMemoList);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	
+	/**
+	 * 신규업소 등록
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/insertNewUpso")
+	public RetJsonBean insertNewUpso(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		DataMap paramsMap2 = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : insertNewUpso");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("UPSO_NM"			, procData.getString("UPSO_NM"));
+		paramsMap.put("UPSO_NEW_ZIP"	, procData.getString("UPSO_NEW_ZIP"));
+		paramsMap.put("UPSO_NEW_ADDR1"	, procData.getString("UPSO_NEW_ADDR1"));
+		paramsMap.put("UPSO_NEW_ADDR2"	, procData.getString("UPSO_NEW_ADDR2"));
+		paramsMap2.put("BD_MNG_NUM"		, procData.getString("BD_MNG_NUM"));
+		//paramsMap.put("UPSO_PHON"		, procData.getString("UPSO_PHON"));
+		paramsMap2.put("BIOWN_NUM"		, procData.getString("BIOWN_NUM"));
+		//paramsMap.put("STNDAMT"			, procData.getString("STNDAMT"));
+		paramsMap2.put("MNGEMSTR_NM"		, procData.getString("MNGEMSTR_NM"));
+		paramsMap2.put("MNGEMSTR_HPNUM"	, procData.getString("MNGEMSTR_HPNUM"));
+		paramsMap2.put("MNGEMSTR_RESINUM", procData.getString("MNGEMSTR_RESINUM"));
+		paramsMap2.put("PERMMSTR_NM"		, procData.getString("PERMMSTR_NM"));
+		paramsMap2.put("PERMMSTR_HPNUM"	, procData.getString("PERMMSTR_HPNUM"));
+		paramsMap2.put("PERMMSTR_RESINUM", procData.getString("PERMMSTR_RESINUM"));
+		paramsMap2.put("OPBI_DAY"		, procData.getString("OPBI_DAY"));
+		//paramsMap.put("BSTYP_CD"		, procData.getString("BSTYP_CD"));
+		paramsMap2.put("GRAD_GBN"		, procData.getString("GRAD_GBN"));
+		paramsMap2.put("GRADNM"			, procData.getString("GRADNM"));
+		paramsMap2.put("REMAK"			, procData.getString("REMAK"));
+		paramsMap2.put("LAT"			, procData.getString("LAT"));
+		paramsMap2.put("LNG"			, procData.getString("LNG"));
+		paramsMap.put("STAFF_CD"		, procData.getString("STAFF_CD")); // 지부장, 관리자가 선택한 직원 사번 -> 선택한 직원이 없을 경우는 USER_ID와 동일
+		
+/*		paramsMap2.put("FILE_NM"		, procData.getString("FILE_NM"));
+		paramsMap2.put("FILE_SIZE"		, procData.getString("FILE_SIZE"));
+		paramsMap2.put("FILES"			, procData.getString("FILES"));*/
+		paramsMap2.put("UPSO_PHON"		, procData.getString("UPSO_PHON"));
+		paramsMap2.put("STNDAMT"		, procData.getString("STNDAMT"));
+		paramsMap2.put("BSTYP_CD"		, procData.getString("BSTYP_CD"));
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			DataMap retVal = svcUpso.insertNewUpso(paramsMap, paramsMap2);
+			retJsonBean = super.makeResultJson(1, "저장하였습니다.", retVal);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 업소등록(정부3.0 개발예정 업소)
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/insertGovUpso")
+	public RetJsonBean insertGovUpso(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		DataMap paramsMap2 = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : insertGovUpso");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("STAT_GBN"	, procData.getString("STAT_GBN"));
+		paramsMap.put("BIGO"		, procData.getString("BIGO"));
+		paramsMap.put("ROW_NUM"		, procData.getString("ROW_NUM"));
+		paramsMap.put("GBN"			, procData.getString("GBN"));	// 구분(노래방, 단란, 유흥)
+		paramsMap2.put("YUHEONG_GBN", procData.getString("YUHEONG_GBN"));
+		
+		
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			svcUpso.setGovUpso(paramsMap, paramsMap2);
+			retJsonBean = super.makeResultJson(1, "저장하였습니다.");
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 *  정부 3.0 동일주소 조회
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/sameGovUpso")
+	public RetJsonBean sameGovUpso(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		DataMap paramsMap2 = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : sameGovUpso");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("ADDR"	, procData.getString("ADDR"));
+		
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			List<DataMap> sameGovUpsoList = svcUpso.getSameGovUpso(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", sameGovUpsoList);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 방문예정 목록리스트
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/upsoScheduleList")
+	public RetJsonBean upsoScheduleList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		DataMap paramsMap2 = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : upsoScheduleList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ 필수 Parameter ############ */
+		
+		/* ############ Parameter ############ */
+		paramsMap2.put("UPSO_CD"	, procData.getString("UPSO_CD"));
+		paramsMap2.put("UPSO_NM"	, procData.getString("UPSO_NM"));
+		paramsMap2.put("VISIT_DAY"	, procData.getString("VISIT_DAY"));
+		paramsMap2.put("ADDR"		, procData.getString("ADDR"));
+		
+		
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			List<DataMap> list = svcUpso.getUpsoScheduleList(paramsMap, paramsMap2);
+			retJsonBean = super.makeResultJson(1, "", list);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 미납업소 리스트
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/upsoNoPayList")
+	public RetJsonBean upsoNoPayList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		DataMap paramsMap2 = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : upsoNoPayList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ 필수 Parameter ############ */
+		paramsMap.put("BSTYP_CD"	, "A");	// 업종코드 검토 필요
+		
+		
+		/* ############ Parameter ############ */
+		paramsMap2.put("UPSO_CD"		, procData.getString("UPSO_CD"));
+		paramsMap2.put("UPSO_NM"		, procData.getString("UPSO_NM"));
+		paramsMap2.put("START_CNT_MON"	, procData.getString("START_CNT_MON"));
+		paramsMap2.put("END_CNT_MON"	, procData.getString("END_CNT_MON"));
+		paramsMap2.put("ADDR"			, procData.getString("ADDR"));
+		
+		
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			List<DataMap> list = svcUpso.getUpsoNoPayList(paramsMap, paramsMap2);
+			retJsonBean = super.makeResultJson(1, "", list);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 무대공연등록
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws JSONException 
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/insertPerform")
+	public RetJsonBean insertPerform(HttpServletRequest request, HttpServletResponse response) throws JSONException {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData   = super.makeProcessData(request, response);
+		DataMap paramsMap  = new DataMap();
+		DataMap paramsMap2 = new DataMap();
+		List<DataMap> paramsList = null;  
+		List<DataMap> paramsList2 = null;  
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : insertPerform");
+			logger.info("Parameter : " + procData);
+		}
+		
+		JSONArray arr  = new JSONArray(procData.getString("DETAIL"));
+		JSONObject obj = new JSONObject(); 
+		
+		for(int i=0; i<arr.length(); i ++) {
+			obj = arr.getJSONObject(i);
+		}
+		
+		/* ############ 필수 Parameter ############ */
+		paramsMap2.put("MDM_CD"			, procData.getString("MDM_CD"));
+		paramsMap.put("USETRM_START_DAY", procData.getString("USETRM_START_DAY"));
+		paramsMap.put("USETRM_END_DAY"	, procData.getString("USETRM_END_DAY"));
+		paramsMap2.put("USE_TTL"			, procData.getString("USE_TTL"));
+		paramsMap2.put("USE_LOC"			, procData.getString("USE_LOC"));
+		paramsMap2.put("USE_LOCN"		, procData.getString("USE_LOCN"));
+		paramsMap2.put("BSCONHAN_NM"		, procData.getString("BSCONHAN_NM"));
+		paramsMap2.put("LAT"				, procData.getString("LAT"));
+		paramsMap2.put("LNG"				, procData.getString("LNG"));
+		paramsMap2.put("BSCON_CD"		, procData.getString("BSCON_CD"));
+		paramsMap.put("STAFF_CD"		, procData.getString("STAFF_CD"));
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+			
+			DataMap paramMap2;
+			DataMap ret =  svcUpso.setPerform(paramsMap, paramsMap2, arr);
+			retJsonBean = super.makeResultJson(1, "등록되었습니다.", ret);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 무대공연관리내역 삭제
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/deletePerform")
+	public RetJsonBean deletePerform(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : deletePerform");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ 필수 Parameter ############ */
+		paramsMap.put("PRIOR_APPRV_NUM"	, procData.getString("PRIOR_APPRV_NUM"));
+		paramsMap.put("VISIT_DAY"		, procData.getString("VISIT_DAY"));
+		
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+			
+			svcUpso.setPerformDetail(paramsMap);
+			retJsonBean = super.makeResultJson(1, "삭제하였습니다.");
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 무대공연관리내역 수정
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/updatePerform")
+	public RetJsonBean updatePerform(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : updatePerform");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ 필수 Parameter ############ */
+		paramsMap.put("PRIOR_APPRV_NUM"	, procData.getString("PRIOR_APPRV_NUM"));
+		paramsMap.put("VISIT_DAY"		, procData.getString("VISIT_DAY"));
+		paramsMap.put("CTENT"			, procData.getString("CTENT"));
+		
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+			
+			svcUpso.updatePerformDetail(paramsMap);
+			retJsonBean = super.makeResultJson(1, "삭제하였습니다.");
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 무대공연 리스트
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/performList")
+	public RetJsonBean performList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : performList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		
+		//////////////////첨부파일 관련 컬럼 누락(쿼리)
+		
+		/* ############ 필수 Parameter ############ */
+		paramsMap.put("START_YRMN"		, procData.getString("START_YRMN")); //시작일
+		paramsMap.put("END_YRMN"		, procData.getString("END_YRMN"));	 //종료일
+		
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+			
+			List<DataMap> list = svcUpso.getPerformList(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", list);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 무대공연관리내역 조회
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/performDetail")
+	public RetJsonBean performDetail(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : performList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		
+		/* ############ 필수 Parameter ############ */
+		paramsMap.put("PRIOR_APPRV_NUM"		, procData.getString("PRIOR_APPRV_NUM")); //시작일
+		
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+			
+			List<DataMap> list = svcUpso.getPerformDetail(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", list);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 무대공연파일  조회
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/performFile")
+	public RetJsonBean performFile(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : performFile");
+			logger.info("Parameter : " + procData);
+		}
+		
+		
+		/* ############ 필수 Parameter ############ */
+		paramsMap.put("PRIOR_APPRV_NUM"		, procData.getString("PRIOR_APPRV_NUM")); //시작일
+		
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+			
+			List<DataMap> list = svcUpso.getPerformFile(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", list);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	
+	/**
+	 * 업소리스트 동기화
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/updateUpsoList")
+	public RetJsonBean updateUpsoList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : updateUpsoList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+			
+			svcUpso.updateUpsoList(paramsMap);
+			retJsonBean = super.makeResultJson(1, "정상처리 되었습니다.");
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	
+	/**
+	 * 업소리스트 동기화
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/newUpsoDetail")
+	public RetJsonBean NewUpsoDetail(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		DataMap map = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : newUpsoDetail");
+			logger.info("Parameter : " + procData);
+		}
+		
+		paramsMap.put("UPSO_CD", procData.getString("UPSO_CD"));
+		/* ############ COOKIE  ############ */
+		/*String USER_ID = CookieUtil.getCookieValue(request, "USER_ID");
+		String GIBU    = CookieUtil.getCookieValue(request, "GIBU");*/
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+			
+			map = svcUpso.getNewUpsoDetail(paramsMap);
+			retJsonBean = super.makeResultJson(1, "정상처리 되었습니다.", map);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	
+	
+}

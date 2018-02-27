@@ -1,0 +1,917 @@
+package com.appg.Komca.controller.api;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.commons.net.ftp.FTP;
+import org.apache.commons.net.ftp.FTPClient;
+import org.apache.commons.net.ftp.FTPReply;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import com.appg.Komca.common.bean.DataMap;
+import com.appg.Komca.common.bean.RetJsonBean;
+import com.appg.Komca.common.constants.Constants;
+import com.appg.Komca.common.exception.DefSeCode;
+import com.appg.Komca.common.exception.ServiceException;
+import com.appg.Komca.common.upload.FileBean;
+import com.appg.Komca.common.upload.FileUpload;
+import com.appg.Komca.common.upload.FileUploadException;
+import com.appg.Komca.common.util.CookieUtil;
+import com.appg.Komca.controller.BaseController;
+import com.appg.Komca.service.SvcComm;
+
+@Controller
+@RequestMapping("/ApiCommon")
+public class ApiCommonController extends BaseController
+{
+	private final static Log	logger	= LogFactory.getLog(ApiCommonController.class);
+	@Autowired SvcComm svcComm;
+	
+	/**
+	 * 상용구 조회(SMS/제목/내용)
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/myContentList")
+	public RetJsonBean myContentList(HttpServletRequest request, HttpServletResponse response) {
+		
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : myContentList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		//상용구 제목 : S, SMS : M, 내용 : V
+		String CONTENT_TYPE = procData.getString("CONTENT_TYPE"); 
+		
+		
+		/* ############ COOKIE  ############ */
+		String GIBU    = procData.getString("GIBU");
+		String USER_ID = procData.getString("USER_ID");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			List<DataMap> myContentList =  svcComm.getMyContentList(GIBU, USER_ID, CONTENT_TYPE);
+			retJsonBean = super.makeResultJson(1, "", myContentList);
+		}
+		catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * SMS 발송	 
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/sendSMS")
+	public RetJsonBean sendSMS(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : sendSMS");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		String UPSO_CD			= procData.getString("UPSO_CD");
+		String MNGEMSTR_NM		= procData.getString("MNGEMSTR_NM");
+		String MNGEMSTR_HPNUM	= procData.getString("MNGEMSTR_HPNUM");
+		String MSG				= procData.getString("MSG");
+		String UPSO_NM			= procData.getString("UPSO_NM");
+		
+		/* ############ COOKIE  ############ */
+		String GIBU    = procData.getString("GIBU");
+		String USER_ID = procData.getString("USER_ID");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			svcComm.sendSMS(UPSO_CD, MNGEMSTR_NM, MNGEMSTR_HPNUM, MSG, UPSO_NM, GIBU, USER_ID);
+			retJsonBean = super.makeResultJson(1, "발송하였습니다.");
+		}
+		catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 상담자/방문정보 구분 공통코드 조회
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/codeList")
+	public RetJsonBean codeList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : codeList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("CODE_TYPE" , procData.getString("CODE_TYPE"));
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			List<DataMap> CodeList = svcComm.getCodeList(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", CodeList);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 시도 선택 리스트
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/siDoList")
+	public RetJsonBean siDoList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : siDoList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("HIGH_CD"		, "00396");
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			List<DataMap> siDoList = svcComm.getSiDoList(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", siDoList);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	
+	/**
+	 * 시군구 선택 리스트
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/siGunGuList")
+	public RetJsonBean siGunGuList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : siGunGuList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("ATTE"		, procData.getString("ATTE"));
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			List<DataMap> siDoList = svcComm.getSiGunGuList(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", siDoList);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 도로명주소 리스트
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/doRoList")
+	public RetJsonBean doRoList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : doRoList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("ATTE"		 , procData.getString("ATTE"));
+		paramsMap.put("CITYCNTYDSRC" , procData.getString("CITYCNTYDSRC"));
+		paramsMap.put("JUSO_NM" 	 , procData.getString("JUSO_NM"));
+		paramsMap.put("MNG_ZIP" 	 , procData.getString("MNG_ZIP"));
+		
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			List<DataMap> doRoList = svcComm.getDoRoList(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", doRoList);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 업종선택1 리스트
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/gradNmList1")
+	public RetJsonBean gradNmList1(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : gradNmList1");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			List<DataMap> gradNmList1 = svcComm.getGradNmList1(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", gradNmList1);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 업종선택2 리스트
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/gradNmList2")
+	public RetJsonBean gradNmList2(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : gradNmList2");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("GRAD_GBN", procData.getString("GRAD_GBN"));
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			List<DataMap> gradNmList2 = svcComm.getGradNmList2(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", gradNmList2);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 무대공연 공통코드 리스트 조회
+	 * 1. 매체 소분류
+	 * 2. 매체코드 조회
+	 * CODE_TYPE = 0 -> 매체 소분류 조회, 1 -> 매체코드 조회(SCALSS_CD)
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/performCodeList")
+	public RetJsonBean performCodeList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : performCodeList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter  ############ */
+		paramsMap.put("CODE_TYPE", procData.getString("CODE_TYPE")); 
+		paramsMap.put("SCLASS_CD", procData.getString("SCLASS_CD")); // CODE_TYPE = 1 일 경으 필수(메체코드조회)
+		
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+
+			List<DataMap> data = svcComm.getPerformCodeList(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", data);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 지역코드 리스트 조회
+	 * 
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/areaCodeList")
+	public RetJsonBean areaCodeList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : areaCodeList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		try{
+			
+			List<DataMap> data = svcComm.getAreaCodeList(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", data);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 거래처 코드 리스트 조회
+	 * 
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/bsconCodeList")
+	public RetJsonBean bsconCodeList(HttpServletRequest request, HttpServletResponse response) {
+		
+		/* ############ Have to setting for Return Data  ############ */
+		RetJsonBean retJsonBean = null;
+		DataMap procData  = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : bsconCodeList");
+			logger.info("Parameter : " + procData);
+		}
+		
+		try{
+			paramsMap.put("BSCON_NM", procData.getString("keyword")); 
+			
+			List<DataMap> data = svcComm.getBsconCodeList(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", data);
+		
+		} catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	
+	/**	담당자 업소연체율 조회
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/reportArrear")
+	public RetJsonBean reportArrear(HttpServletRequest request, HttpServletResponse response) {
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : reportArrear");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("CNT"	, procData.getString("CNT")); //조회연체개월 : 변수(3, 6)
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+			
+			List<DataMap> data = svcComm.getReportArrear(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", data);
+			
+		} catch (ServiceException e) {
+			
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+
+		return retJsonBean;
+	}
+	
+	/**	상용구 설정
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/insertMyContent")
+	public RetJsonBean insertMyContent(HttpServletRequest request, HttpServletResponse response) {
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : insetMyContent");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("GBN"		, procData.getString("CONTENT_TYPE")); //SMS : M, 방문내역문구 : V, 방문제목문구 : S
+		paramsMap.put("CONTENT"	, procData.getString("CONTENT")); //내용
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+			
+			svcComm.insertMyContent(paramsMap);
+			retJsonBean = super.makeResultJson(1, "저장되었습니다.");
+			
+		} catch (ServiceException e) {
+			
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+
+		return retJsonBean;
+	}
+	
+	/**	상용구 수정
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/updateMyContent")
+	public RetJsonBean updateMyContent(HttpServletRequest request, HttpServletResponse response) {
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : insetMyContent");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("GBN"		, procData.getString("CONTENT_TYPE"));//SMS : M, 방문내역문구 : V, 방문제목문구 : S
+		paramsMap.put("CONTENT"	, procData.getString("CONTENT"));//내용
+		paramsMap.put("SEQ"		, procData.getString("SEQ"));//상용구 번호
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+			
+			svcComm.updateMyContent(paramsMap);
+			retJsonBean = super.makeResultJson(1, "");
+			
+		} catch (ServiceException e) {
+			
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+
+		return retJsonBean;
+	}
+	
+	/**	상용구 삭제
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/deleteMyContent")
+	public RetJsonBean deleteMyContent(HttpServletRequest request, HttpServletResponse response) {
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : insetMyContent");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("GBN"		, procData.getString("CONTENT_TYPE"));//SMS : M, 방문내역문구 : V, 방문제목문구 : S
+		paramsMap.put("SEQ"		, procData.getString("SEQ"));//상용구 번호
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+			
+			svcComm.deleteMyContent(paramsMap);
+			retJsonBean = super.makeResultJson(1, "");
+			
+		} catch (ServiceException e) {
+			
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+
+		return retJsonBean;
+	}
+	
+	
+	/**	담당자(별) 징수율 조회
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/reportCollect")
+	public RetJsonBean reportCollect(HttpServletRequest request, HttpServletResponse response) {
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : reportCollect");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("DEMD_YRMN", procData.getString("DEMD_YRMN")); //조회 년월(YYYYMM) -> 검토필요 (쿼리내용이랑 기획서랑 상이)
+		paramsMap.put("TYPE"	 , procData.getString("TYPE")); // 조회타입 0 : 년월 조회, 1 : 누적조회
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+			
+			List<DataMap> data = svcComm.getReportCollect(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", data);
+			
+		} catch (ServiceException e) {
+			
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+
+		return retJsonBean;
+	}
+	
+	/**	담당자(별) 고소율 조회
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/reportGoso")
+	public RetJsonBean reportGoso(HttpServletRequest request, HttpServletResponse response) {
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : reportGoso");
+			logger.info("Parameter : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		
+		/* ############ COOKIE  ############ */
+		String USER_ID = procData.getString("USER_ID");
+		String GIBU    = procData.getString("GIBU");
+		
+		try{
+			
+			if(USER_ID == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			paramsMap.put("USER_ID" , USER_ID);
+			paramsMap.put("GIBU"	, GIBU);
+			
+			List<DataMap> data = svcComm.getReportGoso(paramsMap);
+			retJsonBean = super.makeResultJson(1, "", data);
+			
+		} catch (ServiceException e) {
+			
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+
+		return retJsonBean;
+	}
+	
+	
+	/**	이미지 업로드
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws FileUploadException 
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/uploadFiles")
+	public RetJsonBean uploadFiles(HttpServletRequest request, HttpServletResponse response) throws FileUploadException {
+		
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+		List<FileBean> uploadedFiles = null;
+		FileUpload uploadObj = new FileUpload();
+		DataMap paramsMap = new DataMap();
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : uploadFiles");
+			logger.info("Parameter : " + procData);
+		}
+		
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : uploadFiles");
+		}
+		
+		// 무대공연 : S, 방문 : V, 신규 : N
+		paramsMap.put("ACT_TYPE" , procData.getString("ACT_TYPE"));
+		
+		/* ############ 무대공연 첨부파일 등록 시  ############ */
+		paramsMap.put("PRIOR_APPRV_NUM" , procData.getString("PRIOR_APPRV_NUM")); //사전승인번호
+		paramsMap.put("MNG_NUM" 		, procData.getString("MNG_NUM", "")); //파일관리번호
+		
+		/* ############ 방문내역 첨부파일 등록 시  ############ */
+		paramsMap.put("UPSO_CD"   , procData.getString("UPSO_CD"));	 // 업소코드(신규업소)
+		paramsMap.put("VISIT_SEQ" , procData.getString("VISIT_SEQ"));// 방문등록 SEQ
+		paramsMap.put("JOB_GBN"   , procData.getString("JOB_GBN"));  // 방문정보구분코드
+		
+		/* ############ COOKIE  ############ */
+		paramsMap.put("USER_ID" , procData.getString("USER_ID"));
+		paramsMap.put("GIBU"	, procData.getString("GIBU"));
+		
+		try{
+			
+			if(procData.getString("USER_ID") == null) {
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			}
+			if(paramsMap.get("ACT_TYPE").equals("S")) {
+				if(paramsMap.get("MNG_NUM").equals("")) {
+					uploadedFiles = uploadObj.saveUploadFiles2(request, "", true);
+					String filePath   = "";
+					String fileOriNm  = "";
+					String fileTempNm = "";
+					String fileSize   = "";
+					byte[] file = null;
+					
+					if(uploadedFiles.size() > 0) {
+						filePath   = uploadedFiles.get(0).getFileUrlPath();
+						fileOriNm  = uploadedFiles.get(0).getFileName();
+						fileTempNm = uploadedFiles.get(0).getStoredFileName();
+						fileSize   = Long.toString(uploadedFiles.get(0).getFileSize());
+						file = uploadedFiles.get(0).getFileByte();
+					}
+					paramsMap.put("filePath"	, filePath);
+					paramsMap.put("fileOriNm"	, fileOriNm);
+					paramsMap.put("fileTempNm"	, fileTempNm);
+					paramsMap.put("fileSize"	, fileSize);
+					paramsMap.put("file"		, file);
+				}
+						
+			} else {
+				uploadedFiles = uploadObj.saveUploadFiles2(request, "", true);
+				String filePath   = "";
+				String fileOriNm  = "";
+				String fileTempNm = "";
+				String fileSize   = "";
+				byte[] file = null;
+				
+				if(uploadedFiles.size() > 0) {
+					filePath   = uploadedFiles.get(0).getFileUrlPath();
+					fileOriNm  = uploadedFiles.get(0).getFileName();
+					fileTempNm = uploadedFiles.get(0).getStoredFileName();
+					fileSize   = Long.toString(uploadedFiles.get(0).getFileSize());
+					file = uploadedFiles.get(0).getFileByte();
+					
+					System.out.println("filePath : "+filePath);
+				}
+				paramsMap.put("filePath"	, filePath);
+				paramsMap.put("fileOriNm"	, fileOriNm);
+				paramsMap.put("fileTempNm"	, fileTempNm);
+				paramsMap.put("fileSize"	, fileSize);
+				paramsMap.put("file"		, file);
+			}
+			svcComm.insertFile(paramsMap);
+			retJsonBean = super.makeResultJson(1, "");
+			
+		} catch (ServiceException e) {
+			
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+
+		return retJsonBean;
+	}
+	
+	/**
+	 * 인터셉터
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/intercepter")
+	public RetJsonBean intercepter(HttpServletRequest request, HttpServletResponse response) {
+		
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : intercepter");
+		}
+		
+		retJsonBean = super.makeResultJson(-5, "앱 종료됨");
+		
+		return retJsonBean;
+	}
+	
+}

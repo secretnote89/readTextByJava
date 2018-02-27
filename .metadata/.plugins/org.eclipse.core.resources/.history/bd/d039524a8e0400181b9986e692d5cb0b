@@ -1,0 +1,231 @@
+package com.appg.Komca.controller.api;
+
+import java.text.SimpleDateFormat;
+import java.util.HashMap;
+
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.json.JSONArray;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import com.appg.Komca.common.bean.DataMap;
+import com.appg.Komca.common.bean.RetJsonBean;
+import com.appg.Komca.common.constants.Constants;
+import com.appg.Komca.common.exception.DefSeCode;
+import com.appg.Komca.common.exception.ServiceException;
+import com.appg.Komca.common.util.BCrypt;
+import com.appg.Komca.common.util.JsonUtil;
+import com.appg.Komca.controller.BaseController;
+import com.appg.Komca.service.SvcUser;
+import com.appg.Komca.common.util.CookieUtil;
+
+@Controller
+@RequestMapping("/ApiUser")
+public class ApiUserController extends BaseController
+{
+
+	private final static Log	logger	= LogFactory.getLog(ApiUserController.class);
+
+	@Autowired	private SvcUser				svcUser;
+
+	/**	 * 회원 정보 조회
+	 * 
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/getUserInfo")
+	public RetJsonBean getUserInfo(HttpServletRequest request, HttpServletResponse response)
+	{
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : getUserInfo");
+			logger.info("Parameter : " + procData);
+		}
+
+		try
+		{
+			int userNumber = procData.getInt("userNumber", 0);
+			DataMap userInfo = svcUser.getUserInfo(userNumber);
+			retJsonBean = super.makeResultJson(1, "", userInfo);
+		}
+		catch (ServiceException e)
+		{
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+
+		return retJsonBean;
+	}
+	
+
+	/**
+	 * 로그인 
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/loginUser")
+	public RetJsonBean loginUser(HttpServletRequest request, HttpServletResponse response) {
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+		DataMap cookieMap = new DataMap();
+		DataMap data = new DataMap();
+
+		if(Constants.IS_DEBUG)
+		{
+			logger.info("Controller : loginUser");
+			logger.info("Parameter  : " + procData);
+		}
+		
+		String userID = procData.getString("USER_ID");
+		String userPwd = procData.getString("USER_PWD");
+		String deviceID = procData.getString("DEVICE_ID");
+		String deviceTypeID = procData.getString("DEVICE_TYPE_ID");
+		String PUSH_KEY = procData.getString("PUSH_KEY");
+		String modelNo = procData.getString("MODEL_NO");
+		String cookieNm = "USER_ID";
+		String cookie = CookieUtil.getCookieValue(request, cookieNm);
+		
+		try{
+			
+			//로그인(유저 정보조회)
+			data = svcUser.loginUser(userID, userPwd, deviceID, modelNo, PUSH_KEY);
+				
+			if(cookie == null) {
+				System.out.println(">>> cookie is null <<<");
+				//사용자 정보 set
+				cookieMap.put("USER_ID"  ,	data.getDataMap("loginInfo").get("USER_ID"));
+				cookieMap.put("USER_NM"  ,	data.getDataMap("loginInfo").get("USER_NM"));
+				cookieMap.put("IS_AUTH"	 ,	data.getDataMap("loginInfo").get("IS_AUTH"));
+				cookieMap.put("GIBU"     ,	data.getDataMap("loginInfo").get("GIBU"));
+				cookieMap.put("DEVICE_ID",	deviceID);
+				cookieMap.put("MODEL_NO" ,	modelNo);
+				
+				//로그인한 정보로 쿠키 생성
+				CookieUtil.setCookie(response, cookieMap,							
+		                CookieUtil.COOKIE_DEFAULT_MAX_AGE, CookieUtil.COOKIE_DEFAULT_DOMAIN);
+			}
+			
+			retJsonBean = super.makeResultJson(1, "로그인 되었습니다.", data.getDataMap("loginInfo") , data.getDataMapList("userAuthList"));
+			//retJsonBean = super.makeResultJson(1, "로그인 되었습니다.", data.getDataMapList("userAuthList"), data.getDataMap("loginInfo"));
+		}
+		catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 로그아웃
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/logoutUser")
+	public RetJsonBean logoutUser(HttpServletRequest request, HttpServletResponse response) {
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+		DataMap cookieMap = new DataMap();
+		DataMap data = new DataMap();
+
+		if(Constants.IS_DEBUG)
+		{
+			logger.info("Controller : logoutUser");
+			logger.info("Parameter  : " + procData);
+		}
+		
+		String cookieNm = "USER_ID";
+		String cookie = CookieUtil.getCookieValue(request, cookieNm);
+		
+		if(cookie != null) {
+			//쿠키 삭제
+			//CookieUtil.invalidateCookie(response, cookieMap, CookieUtil.COOKIE_DEFAULT_DOMAIN);
+			if(CookieUtil.isExistCookie(request, response)){
+				retJsonBean = super.makeResultJson(1, "로그아웃 되었습니다.", null);
+			}
+		} else {
+			retJsonBean = super.makeResultJson(1, "로그아웃 할 사용자가 존재하지 않습니다.", null);
+		}
+		
+		
+		return retJsonBean;
+	}
+	
+	/**
+	 * 퇴근처리
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/leaveWork")
+	public RetJsonBean leaveWork(HttpServletRequest request, HttpServletResponse response) {
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+		DataMap paramsMap = new DataMap();
+
+		if(Constants.IS_DEBUG) {
+			logger.info("Controller : leaveWork");
+			logger.info("Parameter  : " + procData);
+		}
+		
+		/* ############ Parameter ############ */
+		paramsMap.put("LAT", procData.getString("LAT")); // 위도
+		paramsMap.put("LNG", procData.getString("LNG")); // 경도
+		
+		/* ############ COOKIE  ############ */
+		String gibu   = procData.getString("GIBU");
+		String userID = procData.getString("USER_ID");		
+		paramsMap.put("GIBU"	, gibu);
+		paramsMap.put("USER_ID" , userID);
+		try{
+			
+			if(userID == null) 
+				throw new ServiceException(DefSeCode.NOT_LOGIN_STATE_CODE, DefSeCode.NOT_LOGIN_STATE_MSG);
+			
+			svcUser.leaveWork(paramsMap);
+			// 날짜 추가
+			String curYrmn =  new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date());
+			retJsonBean = super.makeResultJson(1, curYrmn+" 부로 퇴근처리되었습니다.");
+		}
+		catch(ServiceException e){
+			retJsonBean = super.makeResultJson(e.getErrorCode(), e.getErrorMessage());
+		}
+		return retJsonBean;
+	}
+	
+	
+	@ResponseBody
+	@RequestMapping(value = "/bryptTest")
+	public RetJsonBean bryptTest(HttpServletRequest request, HttpServletResponse response) {
+		RetJsonBean retJsonBean = null;
+		DataMap procData = super.makeProcessData(request, response);
+
+		if(Constants.IS_DEBUG)
+		{
+			logger.info("Controller : bryptTest");
+			logger.info("Parameter : " + procData);
+		}
+		
+		String userPwd = procData.getString("userPwd");
+		
+		System.out.println(BCrypt.hashpw(userPwd, BCrypt.gensalt()));
+		
+		return retJsonBean;
+	}
+	
+
+}

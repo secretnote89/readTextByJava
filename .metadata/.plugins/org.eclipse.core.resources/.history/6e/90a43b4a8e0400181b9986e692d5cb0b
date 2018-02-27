@@ -1,0 +1,133 @@
+package com.appg.Komca.common.bean.db;
+
+/**
+ * tblChatVote
+ * 
+ * @author inyeong
+ *
+ */
+public class ChatVoteBean
+{
+	private int		voteNumber;
+	private String	chatRoomCode;
+	private String	emplNo;
+	private String	voteTitle;
+	private String	voteEndDT;
+	private int		isVoteMultiSelect;
+	private int		isVoteItemAdd;
+	private String	voteDescription;
+	private int		isApplyID;
+	private String	registDT;
+	private int		voteStatus;
+
+	public String getEmplNo()
+	{
+		return emplNo;
+	}
+
+	public void setEmplNo(String emplNo)
+	{
+		this.emplNo = emplNo;
+	}
+
+	public int getVoteStatus()
+	{
+		return voteStatus;
+	}
+
+	public void setVoteStatus(int voteStatus)
+	{
+		this.voteStatus = voteStatus;
+	}
+
+	public int getVoteNumber()
+	{
+		return voteNumber;
+	}
+
+	public void setVoteNumber(int voteNumber)
+	{
+		this.voteNumber = voteNumber;
+	}
+
+	public String getChatRoomCode()
+	{
+		return chatRoomCode;
+	}
+
+	public void setChatRoomCode(String chatRoomCode)
+	{
+		this.chatRoomCode = chatRoomCode;
+	}
+
+	public String getVoteTitle()
+	{
+		return voteTitle;
+	}
+
+	public void setVoteTitle(String voteTitle)
+	{
+		this.voteTitle = voteTitle;
+	}
+
+	public String getVoteEndDT()
+	{
+		return voteEndDT;
+	}
+
+	public void setVoteEndDT(String voteEndDT)
+	{
+		this.voteEndDT = voteEndDT;
+	}
+
+	public int getIsVoteMultiSelect()
+	{
+		return isVoteMultiSelect;
+	}
+
+	public void setIsVoteMultiSelect(int isVoteMultiSelect)
+	{
+		this.isVoteMultiSelect = isVoteMultiSelect;
+	}
+
+	public int getIsVoteItemAdd()
+	{
+		return isVoteItemAdd;
+	}
+
+	public void setIsVoteItemAdd(int isVoteItemAdd)
+	{
+		this.isVoteItemAdd = isVoteItemAdd;
+	}
+
+	public String getVoteDescription()
+	{
+		return voteDescription;
+	}
+
+	public void setVoteDescription(String voteDescription)
+	{
+		this.voteDescription = voteDescription;
+	}
+
+	public int getIsApplyID()
+	{
+		return isApplyID;
+	}
+
+	public void setIsApplyID(int isApplyID)
+	{
+		this.isApplyID = isApplyID;
+	}
+
+	public String getRegistDT()
+	{
+		return registDT;
+	}
+
+	public void setRegistDT(String registDT)
+	{
+		this.registDT = registDT;
+	}
+
+}

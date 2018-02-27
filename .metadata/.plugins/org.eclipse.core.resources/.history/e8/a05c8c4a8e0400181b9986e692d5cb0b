@@ -1,0 +1,1772 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.appg.Komca.mybatis.api.mapper.UpsoMapper">
+	
+	<select id = "getSearchUpsoList" resultType = "DataMap">
+	/* ##################### getSearchUpsoList ##################### */
+		SELECT DEMD_MMCNT
+		     , UPSO_CD
+		     , UPSO_NM
+		     , MNGEMSTR_NM
+		     , PERMMSTR_NM
+		     , MONPRNCFEE
+		     , UPSO_ADDR
+		     , UPSO_NEW_ADDR1
+		     , UPSO_PHON
+		     , MNGEMSTR_HPNUM
+		     , TOT_USE_AMT
+		     , TOT_ADDT_AMT
+		     , TOT_AMT
+		     , UPSO_STAT_NM
+		     , GOSO_YN
+		     , DELAY_YN
+		     , BSCON
+		     , UPSO_GBN
+		     , GBN
+		     , ROW_NUM
+		     , YUHEONG_GBN
+		     , SUB_ADDR
+		  FROM (
+		        SELECT XA.DEMD_MMCNT /*미납개월 */
+		             , XA.UPSO_CD /*업소코드 */
+		             , XA.UPSO_NM /*업소명(SMS 자동문구에 사용) */
+		             , XA.MNGEMSTR_NM /*경영주(SMS 자동문구에 사용) */
+		             , XA.PERMMSTR_NM /*허가주(SMS 자동문구에 사용) */
+		             , XA.MONPRNCFEE /*월정료(SMS 자동문구에 사용) */
+		             , XA.UPSO_ADDR /*업소주소 */
+		             , XA.UPSO_NEW_ADDR1 /*네비용주소 */
+		             , XA.UPSO_PHON /*업소전화번호(통화에사용) */
+		             , XA.MNGEMSTR_HPNUM /*경영주핸드폰번호(목록,통화,SMS에사용) */
+		             , XA.TOT_USE_AMT /*월사용료(SMS 자동문구에 사용) */
+		             , XA.TOT_ADDT_AMT /*가산금(SMS 자동문구에 사용) */
+		             , XA.TOT_AMT /*미납금(SMS 자동문구에 사용) */
+		             , (CASE WHEN XG.UPSO_CD IS NOT NULL AND XG.VISIT_YN = 'N'
+				             THEN '방문예정'
+				             WHEN XG.UPSO_CD IS NOT NULL AND XG.VISIT_YN = 'Y'
+				             THEN '방문완료'
+				             WHEN (XA.CLSBS_YRMN IS NULL AND XA.NEW_DAY IS NOT NULL)
+				             THEN '관리중'
+				             WHEN (XA.CLSBS_YRMN IS NULL AND XA.NEW_DAY IS NULL)
+				             THEN '개발중'
+				             WHEN XA.CLSBS_YRMN IS NOT NULL
+				             THEN '폐업'
+				         END) AS UPSO_STAT_NM /* 업소상태 */
+		             , XA.GOSO_YN AS GOSO_YN /*고소여부 */
+		             <![CDATA[
+		             , (CASE WHEN DEMD_MMCNT >= TO_NUMBER(#{START_CNT_MON}) AND DEMD_MMCNT <= TO_NUMBER(#{END_CNT_MON}) ]]>
+		                     THEN 'Y'
+		                     ELSE 'N'
+		                 END) AS DELAY_YN /*미납여부 */
+		             , XA.BSCON
+		             , 'K' AS UPSO_GBN /*협회등록업소 */
+		             , '' AS GBN
+		             , '' AS ROW_NUM
+		             , '' AS YUHEONG_GBN
+		             , XA.SIGUNGU ||' '|| XA.DONG AS SUB_ADDR
+		          FROM GIBU.TMOB_UPSO_LIST XA
+		             , GIBU.TBRA_UPSO_MAP XB
+		             , GIBU.TMOB_VISIT_PLAN XG
+		         WHERE XA.STAFF_CD = #{USER_ID}
+		           AND XA.BRAN_CD = #{GIBU}
+		           AND XA.UPSO_CD = XB.UPSO_CD
+		           AND XA.UPSO_CD = XG.UPSO_CD(+)
+		           AND XG.STAFF_CD(+)  = NVL(#{USER_ID}, XA.STAFF_CD)
+		           AND XG.VISIT_DAY(+) = TO_CHAR(SYSDATE, 'YYYYMMDD')              
+		        UNION ALL
+		          SELECT 0 AS DEMD_MMCNT
+		               , '' AS UPSO_CD
+		               , BPLC_NM AS UPSO_NM
+		               , '' AS MNGEMSTR_NM
+		               , '' AS PERMMSTR_NM
+		               , 0 AS MONPRNCFEE
+		               , RDN_WHL_ADDR AS UPSO_ADDR /*업소주소 */
+		               , ADDR1 AS UPSO_NEW_ADDR1 /*네비용주소 */
+		               , '' AS UPSO_PHON
+		               , '' AS MNGEMSTR_HPNUM
+		               , 0 AS TOT_USE_AMT
+		               , 0 AS TOT_ADDT_AMT
+		               , 0 AS TOT_AMT
+		               , NVL(BIGO, OPEN_GBN) AS UPSO_STAT_NM
+		               , '' AS GOSO_YN
+		               , '' AS DELAY_YN
+		               , '' AS BSCON
+		               , 'G' AS UPSO_GBN /*정부3.0업소 */
+		               , GBN /*유흥/단란/노래방 구분 */
+		               , ROW_NUM /*KEY1 */
+		               , YUHEONG_GBN /*KEY2 */
+		               , '' SUB_ADDR
+		            FROM (SELECT ROW_NUM
+		                       , '개업' AS OPEN_GBN
+		                       , '노래방' AS GBN
+		                       , BPLC_NM
+		                       , RDN_WHL_ADDR
+		                       , STAT_GBN
+		                       , BIGO
+		                       , ADDR1
+		                       , '' AS YUHEONG_GBN
+		                       , LAT
+		                       , LNG
+		                    FROM GIBU.TGOV_NOREBANG
+		                   WHERE SUBSTR(APV_PERM_YMD, 1, 6) BETWEEN (TO_CHAR(ADD_MONTHS(SYSDATE, -12), 'YYYYMM')) AND (TO_CHAR(SYSDATE, 'YYYYMM'))
+		                  UNION ALL
+		                  SELECT ROW_NUM
+		                       , '개업' AS OPEN_GBN
+		                       , '단란' AS GBN
+		                       , BPLC_NM
+		                       , RDN_WHL_ADDR
+		                       , STAT_GBN
+		                       , BIGO
+		                       , ADDR1
+		                       , '' AS YUHEONG_GBN
+		                       , LAT
+		                       , LNG
+		                    FROM GIBU.TGOV_DANRAN
+		                   WHERE SUBSTR(APV_PERM_YMD, 1, 6) BETWEEN (TO_CHAR(ADD_MONTHS(SYSDATE, -12), 'YYYYMM')) AND (TO_CHAR(SYSDATE, 'YYYYMM'))
+		                  UNION ALL
+		                  SELECT ROW_NUM
+		                       , '개업' AS OPEN_GBN
+		                       , '유흥' AS GBN
+		                       , BPLC_NM
+		                       , RDN_WHL_ADDR
+		                       , STAT_GBN
+		                       , BIGO
+		                       , ADDR1
+		                       , GBN AS YUHEONG_GBN
+		                       , LAT
+		                       , LNG
+		                    FROM GIBU.TGOV_YUHEONG
+		                   WHERE SUBSTR(APV_PERM_YMD, 1, 6) BETWEEN (TO_CHAR(ADD_MONTHS(SYSDATE, -12), 'YYYYMM')) AND (TO_CHAR(SYSDATE, 'YYYYMM'))
+		                   <![CDATA[
+		                     AND GBN <> '01') 
+		           WHERE STAT_GBN <> '1' ]]>
+		        UNION ALL
+		        SELECT 0 AS DEMD_MMCNT
+		             , UPSO_CD /*업소코드 */
+		             , UPSO_NM /*업소명 */
+		             , MNGEMSTR_NM /*경영주 명 */
+		             , PERMMSTR_NM /*허가주 명 */
+		             , 0 AS MONPRNCFEE
+		             , UPSO_NEW_ADDR1 || ' ' || UPSO_NEW_ADDR2 AS UPSO_ADDR
+		             , UPSO_NEW_ADDR1
+		             , UPSO_PHON /*업소전화번호 */
+		             , MNGEMSTR_HPNUM /*경영주 핸드폰번호 */
+		             , 0 AS TOT_USE_AMT
+		             , 0 AS TOT_ADDT_AMT
+		             , 0 AS TOT_AMT
+		             , '등록대기' AS UPSO_STAT_NM
+		             , '' AS GOSO_YN
+		             , '' AS DELAY_YN
+		             , '' AS BSCON
+		             , 'N' AS UPSO_GBN /*신규등록업소 */
+		             , '' AS GBN
+		             , '' AS ROW_NUM
+		             , '' AS YUHEONG_GBN
+		             , '' SUB_ADDR
+		          FROM GIBU.TMOB_NEW_UPSO
+		         WHERE LENGTH(UPSO_CD) != 8
+		           AND STAFF_CD = #{USER_ID}
+		           AND BRAN_CD = #{GIBU}
+		       )
+ 	 WHERE UPSO_NM || ' ' || UPSO_ADDR || ' ' || UPSO_CD || ' ' || REPLACE(UPSO_PHON, '-', '') || ' ' || REPLACE(MNGEMSTR_HPNUM, '-', '') LIKE '%' || #{FIND_NM} || '%'
+	</select>
+	
+	<select id = "getUpsoList" resultType = "DataMap">
+	/* ##################### getUpsoList ##################### */
+	<if test='stanUpsoYn.equals("Y")'>
+		SELECT XA.DEMD_MMCNT /* 미납개월 */
+		     , XA.UPSO_CD /* 업소코드 */
+		     , XA.UPSO_NM /* 업소명(SMS 자동문구에 사용) */
+		     , XA.MNGEMSTR_NM /* 경영주(SMS 자동문구에 사용) */
+		     , XA.PERMMSTR_NM /* 허가주(SMS 자동문구에 사용) */
+		     , XA.MONPRNCFEE /* 월정료(SMS 자동문구에 사용) */
+		     , XA.UPSO_ADDR /* 업소주소 */
+		     , XA.UPSO_NEW_ADDR1 /* 네비용주소 */
+		     , XA.UPSO_PHON /* 업소전화번호(통화에사용) */
+		     , XA.MNGEMSTR_HPNUM /* 경영주핸드폰번호(목록,통화,SMS에사용) */
+		     , XA.TOT_USE_AMT /* 월사용료(SMS 자동문구에 사용) */
+		     , XA.TOT_ADDT_AMT /* 가산금(SMS 자동문구에 사용) */
+		     , XA.TOT_AMT /* 미납금(SMS 자동문구에 사용) */
+		     , (CASE WHEN XG.UPSO_CD IS NOT NULL AND XG.VISIT_YN = 'N'
+		             THEN '방문예정'
+		             WHEN XG.UPSO_CD IS NOT NULL AND XG.VISIT_YN = 'Y'
+		             THEN '방문완료'
+		             WHEN (XA.CLSBS_YRMN IS NULL AND XA.NEW_DAY IS NOT NULL)
+		             THEN '관리중'
+		             WHEN (XA.CLSBS_YRMN IS NULL AND XA.NEW_DAY IS NULL)
+		             THEN '개발중'
+		             WHEN XA.CLSBS_YRMN IS NOT NULL
+		             THEN '폐업'
+		         END) AS UPSO_STAT_NM /* 업소상태 */
+		     , XA.GOSO_YN AS GOSO_YN /* 고소여부 */
+		      
+		     , (CASE WHEN DEMD_MMCNT <![CDATA[>=]]> TO_NUMBER(#{startCntMon}) AND DEMD_MMCNT <![CDATA[<=]]> TO_NUMBER(#{endCntMon})
+		             THEN 'Y'
+		             ELSE 'N'
+		         END) AS DELAY_YN /* 미납여부 */
+		     , XA.BSCON
+		     , 'AK' AS UPSO_GBN /* 협회등록업소 */
+		     , '' AS GBN
+		     , '' AS ROW_NUM
+		     , '' AS YUHEONG_GBN
+		     , XB.LAT
+		     , XB.LNG		     
+		     , XA.SIGUNGU ||' '|| XA.DONG AS SUB_ADDR
+		  FROM GIBU.TMOB_UPSO_LIST XA
+		     , GIBU.TBRA_UPSO_MAP XB
+		     , GIBU.TMOB_VISIT_PLAN XG
+		 WHERE XA.STAFF_CD = #{USER_ID}
+		   AND XA.BRAN_CD = #{GIBU}
+		   <if test="ADDR != null and ADDR != ''">
+		   AND REPLACE(XA.UPSO_ADDR, ' ', '') LIKE '%' || REPLACE(#{ADDR}, ' ', '') || '%'
+		   </if>
+		   AND XA.UPSO_CD = XB.UPSO_CD
+		   <if test="LAT1 != null and LAT1 != ''">
+		   AND XB.LAT BETWEEN #{LAT1} AND #{LAT2}
+		   AND XB.LNG BETWEEN #{LNG1} AND #{LNG2}
+		   </if>
+		   AND XA.UPSO_CD = XG.UPSO_CD(+)
+		   <if test="UPSO_NM != null and UPSO_NM != ''">
+		   AND XA.UPSO_NM LIKE '%' || #{UPSO_NM} || '%'
+		   </if>
+		   AND XG.STAFF_CD(+)  = NVL(#{USER_ID}, XA.STAFF_CD)
+		   AND XG.VISIT_DAY(+) = TO_CHAR(SYSDATE, 'YYYYMMDD')
+			<if test='govUpsoYn.equals("Y")'>
+			UNION ALL
+			</if>
+		</if>
+		<if test='govUpsoYn.equals("Y")'>   
+		  SELECT 0 AS DEMD_MMCNT
+		       , '' AS UPSO_CD
+		       , BPLC_NM AS UPSO_NM
+		       , '' AS MNGEMSTR_NM
+		       , '' AS PERMMSTR_NM
+		       , 0 AS MONPRNCFEE
+		       , RDN_WHL_ADDR AS UPSO_ADDR /* 업소주소 */
+		       , ADDR1 AS UPSO_NEW_ADDR1 /* 네비용주소 */
+		       , '' AS UPSO_PHON
+		       , '' AS MNGEMSTR_HPNUM
+		       , 0 AS TOT_USE_AMT
+		       , 0 AS TOT_ADDT_AMT
+		       , 0 AS TOT_AMT
+		       , NVL(BIGO, OPEN_GBN) AS UPSO_STAT_NM
+		       , '' AS GOSO_YN
+		       , '' AS DELAY_YN
+		       , '' AS BSCON
+		       , 'BG' AS UPSO_GBN /* 정부3.0업소 */
+		       , GBN /* 유흥/단란/노래방 구분 */
+		       , ROW_NUM /* KEY1 */
+		       , YUHEONG_GBN /* KEY2 */
+		       , LAT
+		       , LNG
+		       , '' AS SUB_ADDR
+		    FROM (SELECT ROW_NUM
+		               , '개업' AS OPEN_GBN
+		               , '노래방' AS GBN
+		               , BPLC_NM
+		               , RDN_WHL_ADDR
+		               , STAT_GBN
+		               , BIGO
+		               , ADDR1
+		               , '' AS YUHEONG_GBN
+		               , LAT
+		               , LNG
+		            FROM GIBU.TGOV_NOREBANG
+		           WHERE SUBSTR(APV_PERM_YMD, 1, 6) BETWEEN (TO_CHAR(ADD_MONTHS(SYSDATE, -12), 'YYYYMM')) AND (TO_CHAR(SYSDATE, 'YYYYMM'))
+		          UNION ALL
+		          SELECT ROW_NUM
+		               , '개업' AS OPEN_GBN
+		               , '단란' AS GBN
+		               , BPLC_NM
+		               , RDN_WHL_ADDR
+		               , STAT_GBN
+		               , BIGO
+		               , ADDR1
+		               , '' AS YUHEONG_GBN
+		               , LAT
+		               , LNG
+		            FROM GIBU.TGOV_DANRAN
+		           WHERE SUBSTR(APV_PERM_YMD, 1, 6) BETWEEN (TO_CHAR(ADD_MONTHS(SYSDATE, -12), 'YYYYMM')) AND (TO_CHAR(SYSDATE, 'YYYYMM'))
+		          UNION ALL
+		          SELECT ROW_NUM
+		               , '개업' AS OPEN_GBN
+		               , '유흥' AS GBN
+		               , BPLC_NM
+		               , RDN_WHL_ADDR
+		               , STAT_GBN
+		               , BIGO
+		               , ADDR1
+		               , GBN AS YUHEONG_GBN
+		               , LAT
+		               , LNG
+		            FROM GIBU.TGOV_YUHEONG
+		           WHERE SUBSTR(APV_PERM_YMD, 1, 6) BETWEEN (TO_CHAR(ADD_MONTHS(SYSDATE, -12), 'YYYYMM')) AND (TO_CHAR(SYSDATE, 'YYYYMM'))
+		            <![CDATA[
+		             AND GBN <> '01') 
+		   WHERE STAT_GBN <> '1' ]]>
+		     <if test="UPSO_NM != null and UPSO_NM != ''">
+		     AND BPLC_NM LIKE '%' || #{UPSO_NM} || '%'
+		     </if>
+		     <if test="ADDR != null and ADDR != ''">
+		     AND REPLACE(RDN_WHL_ADDR, ' ', '') LIKE '%' || REPLACE(#{ADDR}, ' ', '') || '%'
+		     </if>
+		     <if test="LAT1 != null and LAT1 != ''">
+		     AND LAT BETWEEN #{LAT1} AND #{LAT2}
+		     AND LNG BETWEEN #{LNG1} AND #{LNG2}
+			 </if>
+		<if test='newUpsoYn.equals("Y")'>
+		UNION ALL
+		</if>
+		</if>
+		<if test='!govUpsoYn.equals("Y")'>
+			<if test='newUpsoYn.equals("Y") and stanUpsoYn.equals("Y")'>
+			UNION ALL
+			</if>
+		</if>
+		<if test='newUpsoYn.equals("Y")'>  
+		SELECT 0 AS DEMD_MMCNT
+		     , UPSO_CD /* 업소코드 */
+		     , UPSO_NM /* 업소명 */
+		     , MNGEMSTR_NM /* 경영주 명 */
+		     , PERMMSTR_NM /* 허가주 명 */
+		     , 0 AS MONPRNCFEE
+		     , UPSO_NEW_ADDR1 || ' ' || UPSO_NEW_ADDR2 AS UPSO_ADDR
+		     , UPSO_NEW_ADDR1
+		     , UPSO_PHON /* 업소전화번호 */
+		     , MNGEMSTR_HPNUM /* 경영주 핸드폰번호 */
+		     , 0 AS TOT_USE_AMT
+		     , 0 AS TOT_ADDT_AMT
+		     , 0 AS TOT_AMT
+		     , '등록대기' AS UPSO_STAT_NM
+		     , '' AS GOSO_YN
+		     , '' AS DELAY_YN
+		     , '' AS BSCON
+		     , 'CN' AS UPSO_GBN /* 신규등록업소 */
+		     , '' AS GBN
+		     , '' AS ROW_NUM
+		     , '' AS YUHEONG_GBN
+		     , LAT
+		     , LNG
+		     , '' AS SUB_ADDR
+		  FROM GIBU.TMOB_NEW_UPSO
+		 WHERE LENGTH(UPSO_CD) != 8
+		   AND STAFF_CD = #{USER_ID}
+		   AND BRAN_CD = #{GIBU}
+		   <if test="UPSO_NM != null and UPSO_NM != ''">
+		   AND UPSO_NM LIKE '%' || #{UPSO_NM} || '%'
+		   </if>
+		   <if test="ADDR != null and ADDR != ''">
+		   AND REPLACE(UPSO_NEW_ADDR1 || UPSO_NEW_ADDR2, ' ', '') LIKE '%' || REPLACE(#{ADDR}, ' ', '') || '%'
+		   </if>
+		   <if test="LAT1 != null and LAT1 != ''">
+		   AND LAT BETWEEN #{LAT1} AND #{LAT2}
+		   AND LNG BETWEEN #{LNG1} AND #{LNG2}
+		   </if>
+		</if> 
+	</select>
+	
+	<select id = "getGovUpsoList" resultType = "DataMap">
+	/* ##################### getGovUpsoList ##################### */
+	     SELECT  ROW_NUM
+		       , OPEN_GBN
+		       , GBN
+		       , YRMN
+		       , BPLC_NM
+		       , RDN_WHL_ADDR
+		       , APV_PERM_YMD
+		       , FACIL_AR
+		       , NOROOM_CNT
+		       , BGROOM_CNT
+		       , SNT_COB_NM
+		       , STAT_GBN
+		       , BIGO
+		       , INSPRES_ID
+		       , ADDR1
+		       , YUHEONG_GBN
+		    FROM (SELECT ROW_NUM
+		               , 'OPEN' AS OPEN_GBN
+		               , '노래방' AS GBN
+		               , SUBSTR(APV_PERM_YMD, 1, 6) AS YRMN
+		               , BPLC_NM
+		               , RDN_WHL_ADDR
+		               , APV_PERM_YMD
+		               , FACIL_AR
+		               , NOROOM_CNT
+		               , BGROOM_CNT
+		               , '' AS SNT_COB_NM
+		               , STAT_GBN
+		               , BIGO
+		               , INSPRES_ID
+		               , ADDR1
+		               , '' AS YUHEONG_GBN
+		            FROM GIBU.TGOV_NOREBANG
+		           WHERE SUBSTR(APV_PERM_YMD, 1, 6) BETWEEN (TO_CHAR(ADD_MONTHS(SYSDATE, -12), 'YYYYMM')) AND (TO_CHAR(SYSDATE, 'YYYYMM'))
+		          UNION ALL
+		          SELECT ROW_NUM
+		               , 'CLOSE' AS OPEN_GBN
+		               , '노래방' AS GBN
+		               , SUBSTR(DCB_YMD, 1, 6) AS YRMN
+		               , BPLC_NM
+		               , RDN_WHL_ADDR
+		               , DCB_YMD AS APV_PERM_YMD
+		               , FACIL_AR
+		               , NOROOM_CNT
+		               , BGROOM_CNT
+		               , '' AS SNT_COB_NM
+		               , STAT_GBN
+		               , BIGO
+		               , INSPRES_ID
+		               , ADDR1
+		               , '' AS YUHEONG_GBN
+		            FROM GIBU.TGOV_NOREBANG
+		           WHERE SUBSTR(DCB_YMD, 1, 6) BETWEEN (TO_CHAR(ADD_MONTHS(SYSDATE, -12), 'YYYYMM')) AND (TO_CHAR(SYSDATE, 'YYYYMM'))
+		          UNION ALL
+		          SELECT ROW_NUM
+		               , 'OPEN' AS OPEN_GBN
+		               , '단란' AS GBN
+		               , SUBSTR(APV_PERM_YMD, 1, 6) AS YRMN
+		               , BPLC_NM
+		               , RDN_WHL_ADDR
+		               , APV_PERM_YMD
+		               , FACIL_TOT_SCP
+		               , 0 AS NOROOM_CNT
+		               , 0 AS BGROOM_CNT
+		               , '' AS SNT_COB_NM
+		               , STAT_GBN
+		               , BIGO
+		               , INSPRES_ID
+		               , ADDR1
+		               , '' AS YUHEONG_GBN
+		            FROM GIBU.TGOV_DANRAN
+		           WHERE SUBSTR(APV_PERM_YMD, 1, 6) BETWEEN (TO_CHAR(ADD_MONTHS(SYSDATE, -12), 'YYYYMM')) AND (TO_CHAR(SYSDATE, 'YYYYMM'))
+		          UNION ALL
+		          SELECT ROW_NUM
+		               , 'CLOSE' AS OPEN_GBN
+		               , '단란' AS GBN
+		               , SUBSTR(DCB_YMD, 1, 6) AS YRMN
+		               , BPLC_NM
+		               , RDN_WHL_ADDR
+		               , DCB_YMD AS APV_PERM_YMD
+		               , FACIL_TOT_SCP
+		               , 0 AS NOROOM_CNT
+		               , 0 AS BGROOM_CNT
+		               , '' AS SNT_COB_NM
+		               , STAT_GBN
+		               , BIGO
+		               , INSPRES_ID
+		               , ADDR1
+		               , '' AS YUHEONG_GBN
+		            FROM GIBU.TGOV_DANRAN
+		           WHERE SUBSTR(DCB_YMD, 1, 6) BETWEEN (TO_CHAR(ADD_MONTHS(SYSDATE, -12), 'YYYYMM')) AND (TO_CHAR(SYSDATE, 'YYYYMM'))
+		          UNION ALL
+		          SELECT ROW_NUM
+		               , 'OPEN' AS OPEN_GBN
+		               , '유흥' AS GBN
+		               , SUBSTR(APV_PERM_YMD, 1, 6) AS YRMN
+		               , BPLC_NM
+		               , RDN_WHL_ADDR
+		               , APV_PERM_YMD
+		               , TO_NUMBER(FACIL_TOT_SCP) AS FACIL_TOT_SCP
+		               , 0 AS NOROOM_CNT
+		               , 0 AS BGROOM_CNT
+		               <![CDATA[
+		               , (CASE WHEN GBN <= '04' THEN CUL_PHYED_COB_NM
+		                       ELSE SNT_COB_NM
+		                   END) AS SNT_COB_NM ]]>
+		               , STAT_GBN
+		               , BIGO
+		               , INSPRES_ID
+		               , ADDR1
+		               , GBN AS YUHEONG_GBN
+		            FROM GIBU.TGOV_YUHEONG
+		           WHERE SUBSTR(APV_PERM_YMD, 1, 6) BETWEEN (TO_CHAR(ADD_MONTHS(SYSDATE, -12), 'YYYYMM')) AND (TO_CHAR(SYSDATE, 'YYYYMM'))
+		           <![CDATA[
+		             AND GBN <> '01']]>
+		          UNION ALL
+		          SELECT ROW_NUM
+		               , 'CLOSE' AS OPEN_GBN
+		               , '유흥' AS GBN
+		               , SUBSTR(DCB_YMD, 1, 6)  AS YRMN
+		               , BPLC_NM
+		               , RDN_WHL_ADDR
+		               , DCB_YMD AS APV_PERM_YMD
+		               , TO_NUMBER(FACIL_TOT_SCP) AS FACIL_TOT_SCP
+		               , 0 AS NOROOM_CNT
+		               , 0 AS BGROOM_CNT
+		               <![CDATA[
+		               , (CASE WHEN GBN <= '04' THEN CUL_PHYED_COB_NM
+		                       ELSE SNT_COB_NM
+		                   END) AS SNT_COB_NM ]]>
+		               , STAT_GBN
+		               , BIGO
+		               , INSPRES_ID
+		               , ADDR1
+		               , GBN AS YUHEONG_GBN
+		            FROM GIBU.TGOV_YUHEONG
+		           WHERE SUBSTR(DCB_YMD, 1, 6) BETWEEN (TO_CHAR(ADD_MONTHS(SYSDATE, -12), 'YYYYMM')) AND (TO_CHAR(SYSDATE, 'YYYYMM'))
+		           <![CDATA[
+		             AND GBN <> '01') ]]>
+		   WHERE RDN_WHL_ADDR LIKE #{siGunGu} || '%'
+		     AND OPEN_GBN = 'OPEN'
+		     <if test="upsoNm != null and upsoNm != ''">
+		     	AND BPLC_NM LIKE '%' || #{upsoNm} || '%'
+		     </if>
+		     <if test="addr != null and addr != ''">
+		     	AND REPLACE(RDN_WHL_ADDR, ' ', '') LIKE '%' || REPLACE(#{addr}, ' ', '') || '%'
+		     </if>		     
+		ORDER BY RDN_WHL_ADDR
+	</select>
+	
+	<select id = "getNewUpsoList" resultType = "DataMap">
+	/* ##################### getNewUpsoList ##################### */
+	     SELECT   STAFF_CD 		/* 담당자 */
+		     , BRAN_CD 			/* 지부코드 */
+		     , UPSO_CD 			/* 업소코드 */
+		     , UPSO_NM 			/* 업소명 */
+		     , UPSO_NEW_ZIP 	/* 업소우편번호 */
+		     , UPSO_NEW_ADDR1 	/* 업소기본주소 */
+		     , UPSO_NEW_ADDR2 	/* 업소상세주소 */
+		     , UPSO_PHON 		/* 업소전화번호 */
+		     , BIOWN_NUM 		/* 사업자번호 */
+		     , MNGEMSTR_NM 		/* 경영주 명 */
+		     , MNGEMSTR_HPNUM 	/* 경영주 핸드폰번호 */
+		     , MNGEMSTR_RESINUM /* 경영주 주민번호 */
+		     , PERMMSTR_NM 		/* 허가주 명 */
+		     , PERMMSTR_HPNUM 	/* 허가주 핸드폰번호 */
+		     , PERMMSTR_RESINUM /* 허가주 주민번호 */
+		     , OPBI_DAY 		/* 개업일자 */
+		     , BSTYP_CD 		/* 업종구분코드 */
+		     , UPSO_GRAD 		/* 업종코드 */
+		     , REMAK 			/* 반주기정보 및 비고 */
+		  FROM GIBU.TMOB_NEW_UPSO
+		 WHERE LENGTH(UPSO_CD) != 8
+	</select>
+	
+	<select id = "getUpsoDetail" resultType = "DataMap">
+	/* ##################### getUpsoDetail ##################### */
+      	SELECT   XA.DEMD_MMCNT /* 미납개월 */
+		     ,   XB.UPSO_CD /* 업소코드 */
+		     ,   XB.UPSO_NM /* 업소명 */
+		     ,   XB.BIOWN_NUM /* 사업자번호 */
+		     ,   XB.MNGEMSTR_NM /* 경영주명 */
+		     ,   XB.MNGEMSTR_RESINUM /* 경영주주민번호 */
+		     ,   XB.PERMMSTR_NM /* 허가주 */
+		     ,   XB.PERMMSTR_RESINUM	/* 허가주 주민번호 */
+		     ,   DECODE ((SELECT NVL(COUNT(UPSO_CD), 0) FROM GIBU.TBRA_DLGTN_CLAIM WHERE UPSO_CD = XA.UPSO_CD AND COMPN_DAY IS NULL), 0, '', '채권') AS BOND /* 채권여부 */
+		     ,   XA.MONPRNCFEE /* 월정료 */
+		     ,   XA.MONPRNCFEE2 /* 기준월정료 */
+		     ,   XB.UPSO_NEW_ADDR1 || DECODE(XB.UPSO_NEW_ADDR2, '', ' ', ', '||XB.UPSO_NEW_ADDR2) || XB.UPSO_REF_INFO AS UPSO_ADDR
+		     ,   XB.UPSO_NEW_ADDR1 /* 네비용주소 */
+		     ,   XB.UPSO_PHON /* 업소전화번호 */
+		     ,   XB.MNGEMSTR_HPNUM /* 경영주핸드폰번호 */
+		     ,   XA.TOT_USE_AMT /* 사용료금액 */
+		     ,   XA.TOT_ADDT_AMT /* 가산금액 */
+		     ,   XA.TOT_USE_AMT + XA.TOT_ADDT_AMT AS TOT_AMT /* 미징수금액 */
+		     ,   XB.UPSO_NEW_ZIP AS UPSO_ZIP
+		     ,   (SELECT ATTE||' '||CITYCNTYDSRC FROM FIDU.TENV_POST WHERE BD_MNG_NUM = XB.UPSO_BD_MNG_NUM) AS SIGUNGU
+		     ,   GIBU.FT_GET_LAST_REPT_YRMN(#{UPSO_CD}, 6) LAST_REPT_YRMN /* 마지막영수일자 */
+		     ,   DECODE((SELECT  COUNT(*) CNT FROM    GIBU.TBRA_UPSO_AUTO WHERE   UPSO_CD = XB.UPSO_CD AND     TERM_YN = 'N'),0,'','OK') AUTO_YN /* 자동이체여부 */
+		    ,  (SELECT DECODE(COURT_NM, NULL, TOWNTWSHP, COURT_NM) FROM FIDU.TENV_POST WHERE BD_MNG_NUM = XB.UPSO_BD_MNG_NUM ) AS DONG
+		    ,   XB.CLIENT_NUM /* 자동이체고객번호 */
+		    ,   XB.OPBI_DAY /* 개업일자 */
+		    ,   XB.NEW_DAY /* 신규일자 */
+		    ,   XB.BRAN_CD /* 지부코드 */
+		    ,   XB.STAFF_CD /* 담당사원코드 */
+		    ,   FIDU.GET_STAFF_NM(XB.STAFF_CD) AS STAFF_NM /* 담당사원명 */
+		    ,   DECODE(TRIM(XA.BSTYP_CD), 'o', GIBU.FT_GET_BSTYPGRAD_NM(XA.UPSO_CD, 'NM') || '(' || GIBU.FT_GET_NOREBANG_GRAD(XA.UPSO_CD) || ')', GIBU.FT_GET_BSTYPGRAD_NM(XA.UPSO_CD, 'NM')) AS GRADNM   /* 업종명 */		    
+		FROM    (
+		           SELECT   DEMD_GBN
+		                ,   UPSO_CD
+		                ,   DEMD_YRMN
+		                ,   MONPRNCFEE
+		                ,   MONPRNCFEE2
+		                ,   BSTYP_CD
+		                ,   UPSO_GRAD
+		                ,   DEMD_MMCNT
+		                ,   START_YRMN
+		                ,   END_YRMN
+		                ,   TOT_USE_AMT
+		                ,   TOT_ADDT_AMT
+		            FROM    (
+		                        SELECT  UPSO_CD
+		                            ,   (TO_CHAR(SYSDATE, 'YYYYMM')) AS                DEMD_YRMN
+		                            ,   GIBU.FT_SPLIT(DEMDS, ',', 0) START_YRMN
+		                            ,   GIBU.FT_SPLIT(DEMDS, ',', 1) END_YRMN
+		                            ,   GIBU.FT_SPLIT(DEMDS, ',', 2) BSTYP_CD
+		                            ,   GIBU.FT_SPLIT(DEMDS, ',', 3) UPSO_GRAD
+		                            ,   GIBU.FT_SPLIT(DEMDS, ',', 4) MONPRNCFEE
+		                            ,   GIBU.FT_SPLIT(DEMDS, ',', 5) MONPRNCFEE2
+		                            ,   GIBU.FT_SPLIT(DEMDS, ',', 6) DEMD_GBN
+		                            ,   GIBU.FT_SPLIT(DEMDS, ',', 7) DEMD_MMCNT
+		                            ,   GIBU.FT_SPLIT(DEMDS, ',', 8) TOT_USE_AMT
+		                            ,   GIBU.FT_SPLIT(DEMDS, ',', 9) + GIBU.FT_SPLIT(DEMDS, ',', 10) TOT_ADDT_AMT
+		                        FROM    (
+		                                    SELECT  UPSO_CD
+		                                        ,   GIBU.FT_GET_DEMD_AMT2(UPSO_CD, MIN(YRMN), (TO_CHAR(SYSDATE, 'YYYYMM')),  (TO_CHAR(SYSDATE, 'YYYYMM')), 'O') DEMDS
+		                                    FROM    (
+		                                                SELECT A.YRMN, A.UPSO_CD
+		                                                FROM  (
+		                                                            SELECT YRMN, UPSO_CD, OPBI_YRMN
+		                                                            FROM    GIBU.COPY_YRMN
+		                                                                ,   (
+		                                                                          /* 전체 미징수 조회 조건 */
+		                                                                         SELECT  UPSO_CD
+		                                                                             ,   SUBSTR(OPBI_DAY, 1, 6) OPBI_YRMN
+		                                                                        FROM    GIBU.TBRA_UPSO
+		                                                                         <![CDATA[
+		                                                                        WHERE   (CLSBS_YRMN IS NULL OR NVL(SUBSTR(CLSBS_INS_DAY,1,6), ' ') > (TO_CHAR(SYSDATE, 'YYYYMM'))) ]]>
+		                                                                        <![CDATA[
+		                                                                        AND     (NEW_DAY IS NULL OR NEW_DAY <= (TO_CHAR(SYSDATE, 'YYYYMM')) || '31') ]]>
+		                                                                        AND     UPSO_CD = #{UPSO_CD}
+	                                                                            AND     BRAN_CD = DECODE(BRAN_CD, 'AL', BRAN_CD, BRAN_CD)
+	                                                                            AND     STAFF_CD = NVL(STAFF_CD, STAFF_CD) 
+		                                                                        )
+		                                                           WHERE YRMN BETWEEN OPBI_YRMN AND to_char(add_months(to_date((TO_CHAR(SYSDATE, 'YYYYMM')), 'YYYYMM'), 1), 'YYYYMM')
+		                                                           <![CDATA[
+		                                                           AND      OPBI_YRMN <= (TO_CHAR(SYSDATE, 'YYYYMM'))) A ]]>
+		                                                 LEFT JOIN GIBU.TBRA_NOTE B ON (A.YRMN = B.NOTE_YRMN AND A.UPSO_CD = B.UPSO_CD)
+		                                                 WHERE B.NOTE_YRMN IS NULL
+		                                     )
+		                                     GROUP BY UPSO_CD
+		/*                                     HAVING COUNT(YRMN) BETWEEN TO_NUMBER(startCntMon) AND TO_NUMBER(endCntMon) + 1 */
+		                                )
+		                    )
+		        ) XA
+		    ,   GIBU.TBRA_UPSO XB
+		    ,   GIBU.TBRA_BSTYPGRAD XC
+		WHERE   XB.UPSO_CD = XA.UPSO_CD
+		AND     XC.GRAD_GBN = XA.UPSO_GRAD
+		AND     XC.BSTYP_CD = XA.BSTYP_CD
+		ORDER BY GRAD_GBN
+	</select>
+	
+	<select id = "getUpsoNoteDetail" resultType = "DataMap">
+	/* ##################### getUpsoNoteDetail ##################### */
+      	SELECT ZA.UPSO_CD
+		     , ZA.NOTE_YRMN /* 처리년월 */
+		     , ZA.REPT_GBN
+		     , DECODE(ZA.ACCU_GBN, NULL, ZA.CODE_NM, '06', '채권', '22', DECODE(ACCU_SOLCNT, 1, '고소해결', '고소분납')) AS CODE_NM /* 입금구분 */
+		     , ZA.USE_AMT /* 입금처리금액 */
+		     , ZA.REPT_DAY /* 입금일자 */
+		     , ZA.REPT_NUM /* 입금번호 */
+		     , ZA.RECV_DAY /* 영수일자 */
+		     , ZA.ACCU_GBN /* 고소구분 */
+		     , ZA.DISTR_SEQ /* 분배순번 */
+		     , (CASE WHEN REPT_GBN BETWEEN '11' AND '19'
+		             THEN REPT_DAY
+		             WHEN REPT_GBN = '04'
+		             THEN REPT_DAY
+		             ELSE MAPPING_DAY
+		         END) AS MAPPING_DAY /* 입금매핑일자 */
+		  FROM (SELECT A.UPSO_CD
+		             , A.NOTE_YRMN
+		             , A.REPT_GBN
+		             , (SELECT DECODE(COUNT(UPSO_CD), 0, 0, 1) FROM GIBU.TBRA_ACCU WHERE UPSO_CD = #{UPSO_CD} AND COMPN_DAY IS NOT NULL AND A.NOTE_YRMN BETWEEN SOL_START_YRMN AND SOL_END_YRMN) AS ACCU_SOLCNT
+		             , D.ACCU_CNT
+		             , A.USE_AMT
+		             , A.REPT_DAY
+		             , A.REPT_NUM
+		             , A.RECV_DAY
+		             , A.ACCU_GBN
+		             , A.DISTR_SEQ
+		             , A.MAPPING_DAY
+		             , C.CODE_NM
+		          FROM GIBU.TBRA_NOTE A
+		             , FIDU.TENV_CODE C
+		             , (
+		                SELECT DECODE(COUNT(UPSO_CD), 0, 0, 1) AS ACCU_CNT
+		                  FROM GIBU.TBRA_ACCU
+		                 WHERE UPSO_CD = #{UPSO_CD}
+		                   AND COMPN_DAY IS NULL
+		               ) D
+		         WHERE A.UPSO_CD = #{UPSO_CD}
+		/*           AND A.NOTE_YRMN BETWEEN TO_CHAR(ADD_MONTHS(SYSDATE, -6), 'YYYYMM') AND TO_CHAR(SYSDATE, 'YYYYMM') */
+		           AND C.HIGH_CD = '00141'
+		           AND DECODE(A.ACCU_GBN, NULL, A.REPT_GBN, A.ACCU_GBN) = C.CODE_CD
+		         ORDER BY NOTE_YRMN DESC
+		       ) ZA
+		 WHERE ROWNUM BETWEEN 1 AND TO_NUMBER(#{endCntMon})
+	</select>
+	
+	<insert id="insertSMS">
+	/* ##################### insertSMS ##################### */
+		<if test='sendType.equals("0")'>
+		/* DESC : msg 용량이(byte) 80을 초과 할 경우 */  
+		
+			INSERT INTO KOMSMS.SDK_MMS_SEND (MSG_ID, USER_ID, SCHEDULE_TYPE, SUBJECT, NOW_DATE, SEND_DATE, CALLBACK, DEST_COUNT, DEST_INFO, MSG_TYPE, MMS_MSG, CONTENT_COUNT, CONTENT_DATA, RESERVED1, RESERVED2, RESERVED3, RESERVED4, RESERVED5, RESERVED6)
+	        SELECT KOMSMS.SDK_MMS_SEQ.NEXTVAL /* MSG_ID */
+	             , #{UPSO_CD} /* USER_ID */
+	             , '0' /* SCHEDULE_TYPE(즉시:0 예약:1)  */
+	             , '(사)한국음악저작권협회' /* SUBJECT */
+	             , TO_CHAR(SYSDATE,'YYYYMMDDHH24MI') /* NOW_DATE */
+	             , TO_CHAR(SYSDATE,'YYYYMMDDHH24MI') /* SEND_DATE(즉시인경우 널 예약인경우 'YYYYMMDDHH24MISS') */
+	             , (SELECT REGEXP_REPLACE(REGEXP_REPLACE(PHON_NUM, '[^0-9]', ''), '[[:space:]]{1,}', '') FROM INSA.TCPM_BIPLC WHERE GIBU = #{GIBU}) /* CALLBACK */
+	             , '1' /* DEST_COUNT */
+	             , #{MNGEMSTR_NM} || '^' || REPLACE(#{MNGEMSTR_HPNUM}, '-', '') /* DEST_INFO */
+	             , '0' /* MSG_TYPE */
+	             , #{MSG} /* MMS_MSG */
+	             , 0 /* CONTENT_COUNT */
+	             , '' /* CONTENT_DATA */
+	             , #{USER_ID} /* RESERVED1 */
+	             , 'U' || #{UPSO_CD} /* RESERVED2 */
+	             , LENGTHB(#{MSG}) /* RESERVED3 */
+	             , SUBSTRB(#{UPSO_NM}, 1, 50) /* RESERVED4 */
+	             , #{GIBU} /* RESERVED5 */
+	             , '' /* RESERVED6 */
+	          FROM DUAL
+		</if>
+		<if test='sendType.equals("1")'>
+		/* DESC : msg 용량이(byte) 80을 초과 하지 않을 경우  */
+		
+			INSERT INTO KOMSMS.SDK_SMS_SEND (MSG_ID, USER_ID, SCHEDULE_TYPE, SUBJECT, SMS_MSG, CALLBACK_URL, NOW_DATE, SEND_DATE, CALLBACK, DEST_TYPE, DEST_COUNT, DEST_INFO, RESERVED1, RESERVED2, RESERVED3, RESERVED4, RESERVED5, RESERVED6)
+	        SELECT KOMSMS.SDK_SMS_SEQ.NEXTVAL /* MSG_ID */
+	             , #{UPSO_CD} /* USER_ID */
+	             , '0' /* SCHEDULE_TYPE(즉시:0 예약:1)
+	             , '(사)한국음악저작권협회' /* SUBJECT */
+	             , #{MSG} /* SMS_MSG */
+	             , '' /* CALLBACK_URL */
+	             , TO_CHAR(SYSDATE,'YYYYMMDDHH24MI') /* NOW_DATE */
+	             , TO_CHAR(SYSDATE,'YYYYMMDDHH24MI') /* SEND_DATE(즉시인경우 널 예약인경우 'YYYYMMDDHH24MISS') */
+	             , (SELECT REGEXP_REPLACE(REGEXP_REPLACE(PHON_NUM, '[^0-9]', ''), '[[:space:]]{1,}', '') FROM INSA.TCPM_BIPLC WHERE GIBU = #{GIBU}) /* CALLBACK  */
+	             , '0' /* DEST_TYPE */
+	             , '1' /* DEST_COUNT */
+	             , #{MNGEMSTR_NM} || '^' || REPLACE(#{MNGEMSTR_HPNUM}, '-', '') /* DEST_INFO */
+	             , #{USER_ID} /* RESERVED1 */
+	             , 'U' /* RESERVED2 */
+	             , LENGTHB(#{MSG}) /* RESERVED3 */
+	             , SUBSTRB(#{UPSO_NM}, 1, 50) /* RESERVED4 */
+	             , #{GIBU} /* RESERVED5 */
+	             , '' /* RESERVED6 */
+	          FROM DUAL
+		</if>
+	</insert>
+	
+	<select id = "getMyContentList" resultType = "DataMap">
+	/* ##################### getMyContentList ##################### */
+      	SELECT CONTENT
+		  FROM GIBU.TMOB_CONTENT_LIST
+		 WHERE STAFF_CD = #{USER_ID}
+		   AND BRAN_CD  = #{GIBU}
+		   AND GBN      = #{CONTENT_TYPE}
+	</select>
+	
+	<select id = "getUpsoVisitList"  resultType = "DataMap">
+	/* ##################### getUpsoVisitList ##################### */
+      	SELECT   A.UPSO_CD
+		       , A.VISIT_DAY
+		       , A.VISIT_TIME
+		       , A.JOB_GBN
+		       , B.CODE_NM
+		       , A.CONSPRES
+		       , A.REMAK
+		       , A.CONS_DATE
+		       , A.CONS_SEQ
+		       , C.FILE_ROUT
+		       , C.FILE_NM
+		       , A.VISIT_SEQ
+		       , TO_CHAR(A.INS_DATE, 'YYYYMMDD')         AS INS_DATE
+		       , TO_CHAR(A.INS_DATE, 'YYYYMMDDHH24MISS') AS INS_DATE2
+		       , D.FILE_ROUT                             AS IMG_ROUT
+		       , D.FILE_TEMPNM                           AS IMG_TEMPNM
+		    FROM GIBU.TBRA_UPSO_VISIT       A
+		       , FIDU.TENV_CODE             B
+		       , GIBU.TBRA_UPSO_ADRS_FILEINFO C
+		       , GIBU.TBRA_UPSO_VISIT_ATTCH D
+		   WHERE A.UPSO_CD   = #{UPSO_CD}
+		     AND B.HIGH_CD   = '00198'
+		     AND A.JOB_GBN   = B.CODE_CD
+		     AND A.VISIT_DAY BETWEEN #{START_DAY} AND (TO_CHAR(SYSDATE, 'YYYYMMDD'))
+		     AND A.CONS_DATE = C.CONS_DATE(+)
+		     AND A.CONS_SEQ  = C.CONS_SEQ(+)
+		     AND A.UPSO_CD   = D.UPSO_CD(+)
+		     AND A.VISIT_DAY = D.VISIT_DAY(+)
+		     AND A.VISIT_SEQ = D.VISIT_SEQ(+)
+		     AND A.JOB_GBN   = D.JOB_GBN(+)
+		ORDER BY INS_DATE2 DESC
+	</select>
+	
+	<select id = "getUpsoVisitDetail" resultType = "hashmap">
+	/* ##################### getUpsoVisitDetail ##################### */
+      	SELECT UPSO_CD
+		     , VISIT_DAY
+		     , JOB_GBN
+		     , VISIT_NUM
+		     , REMAK
+		     , VISIT_SEQ
+		  FROM GIBU.TBRA_UPSO_VISIT_BRE
+		 WHERE UPSO_CD   = #{UPSO_CD}
+		   AND VISIT_DAY = #{VISIT_DAY}
+		   AND JOB_GBN   = #{JOB_GBN}
+		   AND VISIT_SEQ = #{VISIT_SEQ}
+	</select>
+	
+	<select id = "getUpsoAccuList" resultType = "DataMap">
+	/* ##################### getUpsoAccuList ##################### */
+      	SELECT XB.UPSO_CD 
+		     , XB.UPSO_NM 
+		     , DECODE(XA.ACCU_GBN,'A','형사','민사') ACCU_GBN_NM /* 구분 */
+		     , XC.CODE_NM JUDG_NM 
+		     , XA.ACCU_DAY || XA.ACCU_NUM || XA.ACCU_BRAN ACCU_NO /* 고소번호 */
+     		 , DECODE(XA.ACCU_OBJ, 'B', '경영주', 'O', '허가주', '') AS ACCU_OBJ /* 고소대상 */		     
+		     , XB.MNGEMSTR_NM 
+		     , XB.PERMMSTR_NM 
+		     , XD.GRADNM 
+		     , XB.BRAN_CD 
+		     , XA.ACCU_DAY /* 고소일자 */
+		     , XA.ACCU_NUM 
+		     , XA.ACCU_BRAN 
+		     , XA.ACCU_GBN 
+		     , XA.COMPN_DAY 
+		     , XA.PLCST_CD
+		     , (SELECT BIGO AS CODE_NM FROM FIDU.TENV_CODE WHERE HIGH_CD = '00214' AND CODE_CD = XA.PLCST_CD AND USE_YN = 'Y') AS PLCST_NM /* 경찰서 */
+		     , XA.EVT_NUM /* 사건번호 */
+		     , XA.REQ_DAY /* 의뢰일자 */
+		     , XA.INSPECTOR /* 담당조사관 */
+		     , XA.JUDG_BRE /* 판결내역 */
+		     , XA.START_YRMN || ' ~ ' || XA.END_YRMN AS YRMN /* 대상기간 */
+		     , XA.REQ_ORG_AMT /* 의뢰 원금액 */
+		     , XA.REQ_ADDT_AMT /* 의뢰 가산금액 */
+		     , XA.REQ_ORG_AMT + XA.REQ_ADDT_AMT AS REQ_TOT_AMT /* 의뢰총금액 */
+		     , XA.COMPN_DAY /* 완결일자 */
+		     , XA.SOL_START_YRMN || ' ~ ' || XA.SOL_END_YRMN AS SOL_YRMN /* 해결기간 */
+		     , XA.SOL_ORG_AMT /* 해결원금 */
+		     , XA.SOL_ADDT_AMT /* 해결가산금 */
+		     , XA.SOL_ORG_AMT + XA.SOL_ADDT_AMT AS SOL_TOT_AMT /* 해결총금액 */
+		     , XA.COMIS /* 수수료 */
+		  FROM GIBU.TBRA_ACCU XA 
+		     , GIBU.TBRA_UPSO XB 
+		     , FIDU.TENV_CODE XC 
+		     , (SELECT ZA.UPSO_CD, ZB.MONPRNCFEE, ZC.GRADNM, TRIM(ZB.BSTYP_CD) BSTYP_CD, ZB.UPSO_GRAD 
+		          FROM (  SELECT A.UPSO_CD, MAX(A.JOIN_SEQ) JOIN_SEQ 
+		                    FROM GIBU.TBRA_UPSORTAL_INFO A 
+		                       , GIBU.TBRA_UPSO B 
+		                   WHERE 1=1
+		                     AND B.BRAN_CD = DECODE(#{GIBU}, 'AL', B.BRAN_CD, #{GIBU})   
+		                     AND A.UPSO_CD = B.UPSO_CD 
+		                GROUP BY A.UPSO_CD) ZA 
+		             , GIBU.TBRA_UPSORTAL_INFO ZB 
+		             , GIBU.TBRA_BSTYPGRAD ZC 
+		         WHERE ZB.JOIN_SEQ = ZA.JOIN_SEQ 
+		           AND ZB.UPSO_CD  = ZA.UPSO_CD   
+		           AND ZC.BSTYP_CD = ZB.BSTYP_CD 
+		           AND ZC.GRAD_GBN = ZB.UPSO_GRAD) XD 
+		 WHERE 1=1
+		   AND XB.BRAN_CD = DECODE(#{GIBU}, 'AL', XB.BRAN_CD, #{GIBU}) 
+		   AND XA.UPSO_CD = XB.UPSO_CD 
+		   AND XD.UPSO_CD = XB.UPSO_CD 
+		   AND XC.HIGH_CD(+) = '00220' 
+		   AND XC.CODE_CD(+) = XA.JUDG_CD 
+		   AND XA.UPSO_CD = #{UPSO_CD}
+		 ORDER BY XA.ACCU_DAY DESC
+	</select>
+	
+	<select id = "getUpsoAccuMemoList" resultType = "DataMap">
+	
+	/* ##################### getUpsoAccuMemoList ##################### */
+	
+      	SELECT ACCU_DAY 
+		     , ACCU_NUM 
+		     , ACCU_BRAN 
+		     , MEMO_DAY 
+		     , MEMO_NUM 
+		     , MEMO 
+		     , SNUM 
+		  FROM GIBU.TBRA_ACCU_MEMO 
+		 WHERE ACCU_DAY  = #{ACCU_DAY} 
+		   AND ACCU_NUM  = #{ACCU_NUM} 
+		   AND ACCU_BRAN = #{ACCU_BRAN}
+		   
+	</select>
+	
+	<select id = "getTotUseAmt" resultType = "DataMap">
+	/* ##################### getTotUseAmt ##################### */
+      	SELECT DEMD_MMCNT 
+	         , START_YRMN || ' ~ ' || END_YRMN /* 현재기간 */
+	         , TOT_USE_AMT /* 현재원금 */ 
+	         , (CASE WHEN #{ACCU_DAY}  <![CDATA[ < ]]>  '20161101'
+	                 THEN TOT_USE_AMT * 0.3
+	                 ELSE TOT_USE_AMT * 0.15
+	             END) AS TOT_ADDT_AMT /* 현재가산금 */
+	         , (CASE WHEN #{ACCU_DAY}  <![CDATA[ < ]]>  '20161101' 
+	                 THEN TOT_USE_AMT * 1.3
+	                 ELSE TOT_USE_AMT * 1.15
+	             END) AS TOT_TOT_AMT /* 현재총금액 */
+	      FROM ( 
+	            SELECT GIBU.FT_SPLIT(DEMDS, ',', 0) START_YRMN 
+	                 , GIBU.FT_SPLIT(DEMDS, ',', 1) END_YRMN 
+	                 , GIBU.FT_SPLIT(DEMDS, ',', 7) DEMD_MMCNT 
+	                 , GIBU.FT_SPLIT(DEMDS, ',', 8) TOT_USE_AMT 
+	              FROM ( 
+	                    SELECT A.UPSO_CD 
+	                         , GIBU.FT_GET_DEMD_AMT2(A.UPSO_CD, A.START_YRMN, TO_CHAR(SYSDATE, 'YYYYMM'), TO_CHAR(SYSDATE, 'YYYYMM'), 'O') DEMDS 
+	                      FROM ( 
+	                            SELECT UPSO_CD 
+	                                 , OPBI_YRMN 
+	                                 , COUNT(YRMN) DEMD_MMCNT 
+	                                 , MIN(YRMN)   START_YRMN 
+	                              FROM ( 
+	                                    SELECT YRMN 
+	                                         , UPSO_CD 
+	                                         , OPBI_YRMN 
+	                                      FROM GIBU.COPY_YRMN A 
+	                                         , ( 
+	                                            SELECT UPSO_CD 
+	                                                 , SUBSTR(OPBI_DAY, 1, 6) OPBI_YRMN 
+	                                              FROM GIBU.TBRA_UPSO 
+	                                             WHERE (CLSBS_YRMN IS NULL OR NVL(SUBSTR(CLSBS_INS_DAY,1,6), ' ') > TO_CHAR(SYSDATE, 'YYYYMM')) 
+	                                               AND (NEW_DAY IS NULL OR NEW_DAY <![CDATA[ <= ]]> TO_CHAR(SYSDATE, 'YYYYMM') || '31') 
+	                                               AND UPSO_CD = #{UPSO_CD}
+	                                           ) B 
+	                                     WHERE YRMN NOT IN (SELECT NOTE_YRMN FROM GIBU.TBRA_NOTE WHERE UPSO_CD = B.UPSO_CD) 
+	                                       AND YRMN BETWEEN B.OPBI_YRMN AND TO_CHAR(SYSDATE, 'YYYYMM') 
+	                                   ) 
+	                             GROUP BY UPSO_CD, OPBI_YRMN) A 
+	                   ) 
+	           )
+		   
+	</select>
+	
+	<select id = "getUpsoVisitFile" resultType = "DataMap">
+	
+	/* ##################### getUpsoVisitFile ##################### */
+	
+      	SELECT UPSO_CD
+		     , SEQ
+		     , FILE_ROUT       PATH
+		     , FILE_TEMPNM     UNIFILENAME
+		     , FILE_NM         AS UPFILENAME
+		     , FILES           AS ATTCH_FILE_CTENT
+		     , LENGTH(FILE_NM) AS PROF_CHG_FILENM_LEN
+		  FROM GIBU.TBRA_UPSO_VISIT_ATTCH
+		 WHERE UPSO_CD   = #{UPSO_CD}
+		   AND VISIT_DAY = #{VISIT_DAY}
+		   AND JOB_GBN   = #{JOB_GBN}
+		   AND VISIT_SEQ = #{VISIT_SEQ}
+		   
+	</select>
+	
+	<select id = "getCodeList" resultType = "DataMap">
+	
+	/* ##################### getCodeList ##################### */
+	
+      	SELECT CODE_CD
+		     , CODE_NM
+		  FROM FIDU.TENV_CODE
+		 WHERE HIGH_CD  = #{HIGH_CD}
+		   AND CODE_ETC = #{CODE_TYPE}
+		 ORDER BY SORT_CD		   
+	</select>
+	
+	<select id = "getVisitSeq" resultType = "String">
+	/* ##################### getVisitSeq ##################### */
+      	SELECT NVL(MAX(VISIT_SEQ), 0) + 1 VISIT_SEQ
+		  FROM GIBU.TBRA_UPSO_VISIT
+		 WHERE UPSO_CD   = #{UPSO_CD}
+		   AND VISIT_DAY = TO_CHAR(SYSDATE, 'YYYYMMDD')
+		   AND JOB_GBN   = #{JOB_GBN}		   
+	</select>
+	
+	<update id = "updateUpsoVisitPlan">
+	/* ##################### updateUpsoVisitPlan ##################### */
+	
+      	MERGE INTO GIBU.TMOB_VISIT_PLAN A
+		USING (SELECT STAFF_CD, BRAN_CD, VISIT_DAY, UPSO_CD FROM GIBU.TMOB_VISIT_PLAN WHERE STAFF_CD = #{USER_ID} AND BRAN_CD = #{GIBU} AND VISIT_DAY = TO_CHAR(SYSDATE, 'YYYYMMDD') AND UPSO_CD = #{UPSO_CD}) B
+		ON (A.STAFF_CD = B.STAFF_CD AND A.BRAN_CD = B.BRAN_CD AND A.VISIT_DAY = B.VISIT_DAY AND A.UPSO_CD = B.UPSO_CD)
+		WHEN MATCHED THEN
+		UPDATE SET VISIT_YN = 'Y'
+				, LAT = #{LAT}
+				, LNG = #{LNG}
+				, MODPRES_ID = #{USER_ID}
+				, MOD_DATE = SYSDATE
+		WHEN NOT MATCHED THEN
+		INSERT (A.STAFF_CD, A.BRAN_CD, A.VISIT_DAY, A.UPSO_CD, A.VISIT_YN, A.LAT, A.LNG, A.INSPRES_ID, A.INS_DATE)
+		VALUES (#{STAFF_CD}, #{GIBU}, TO_CHAR(SYSDATE, 'YYYYMMDD'), #{UPSO_CD}, '', #{LAT}, #{LNG}, #{USER_ID}, SYSDATE)   
+	</update>
+	
+	<insert id = "insertUpsoVisit">
+	/* ##################### insertUpsoVisit ##################### */
+      	INSERT INTO GIBU.TBRA_UPSO_VISIT(UPSO_CD, VISIT_DAY, VISIT_SEQ, JOB_GBN, CONSPRES, REMAK, INSPRES_ID, INS_DATE, VISIT_TIME)
+		VALUES (#{UPSO_CD}, TO_CHAR(SYSDATE, 'YYYYMMDD'), #{VISIT_SEQ}, #{JOB_GBN}, #{CONSPRES}, #{REMARK}, #{USER_ID}, SYSDATE, TO_CHAR(SYSDATE, 'HH24MI'))	   
+	</insert>
+	
+	<insert id = "insertUpsoVisitAttch">
+	/* ##################### insertUpsoVisitAttch ##################### */
+      	INSERT INTO GIBU.TBRA_UPSO_VISIT_ATTCH(UPSO_CD, VISIT_DAY, VISIT_SEQ, JOB_GBN, SEQ, FILE_NM, FILE_ROUT, FILE_TEMPNM, FILES, FILE_SIZE)
+		VALUES (#{UPSO_CD}, TO_CHAR(SYSDATE, 'YYYYMMDD'), #{VISIT_SEQ}, #{JOB_GBN}, ROWNUM, #{fileOriNm}, /* '/home/jeus/komca_web/upload' */ #{filePath}, #{fileTempNm}, #{file,jdbcType=BLOB}, #{fileSize})	   
+	</insert>
+	
+	<insert id = "insertUpsoVisitDetail">
+	/* ##################### insertUpsoVisitDetail ##################### */      	
+	INSERT INTO GIBU.TBRA_UPSO_VISIT_BRE(
+		UPSO_CD, 
+		VISIT_DAY, 
+		VISIT_NUM, 
+		VISIT_SEQ, 
+		JOB_GBN, 
+		REMAK, 
+		INSPRES_ID, 
+		INS_DATE)
+	VALUES 
+	(
+		#{UPSO_CD}, 
+		TO_CHAR(SYSDATE, 'YYYYMMDD'), 
+		(SELECT NVL(MAX(VISIT_NUM)+1, 1) FROM GIBU.TBRA_UPSO_VISIT_BRE WHERE UPSO_CD = #{UPSO_CD} AND VISIT_DAY = TO_CHAR(SYSDATE, 'YYYYMMDD')), 
+		#{VISIT_SEQ}, 
+		#{JOB_GBN}, 
+		#{DET_REMAK}, 
+		#{USER_ID}, 
+		SYSDATE)	   
+	</insert>
+	
+	
+	<update id="updateUpsoVisit">
+	/* ##################### updateUpsoVisit ##################### */
+	UPDATE GIBU.TBRA_UPSO_VISIT
+	   SET MODPRES_ID = #{USER_ID}
+	     , MOD_DATE   = SYSDATE
+	 WHERE VISIT_DAY  = #{VISIT_DAY}
+	   AND VISIT_SEQ  = #{VISIT_SEQ}
+	   AND UPSO_CD    = #{UPSO_CD}
+	   AND JOB_GBN    = #{JOB_GBN}
+	</update>
+	
+	<delete id="deleteUpsoVisitDetail">
+	/* ##################### deleteUpsoVisitDetail ##################### */
+	 DELETE FROM GIBU.TBRA_UPSO_VISIT_BRE
+      WHERE VISIT_DAY = #{VISIT_DAY}
+       	AND VISIT_NUM = #{VISIT_NUM}
+       	AND UPSO_CD   = #{UPSO_CD}
+       	AND JOB_GBN   = #{JOB_GBN}
+       	AND VISIT_SEQ = #{VISIT_SEQ}
+	</delete>
+	
+	<select id = "getSiDoList" resultType = "DataMap">
+	/* ##################### getSiDoList ##################### */
+	  SELECT CODE_NM AS ATTE
+	    FROM FIDU.TENV_CODE
+	   WHERE HIGH_CD = #{HIGH_CD}
+	ORDER BY CODE_NM
+	</select>
+	
+	<select id = "getSiGunGuList" resultType = "DataMap">
+	/* ##################### getSiGunGuList ##################### */
+	  SELECT DECODE(MNG_ZIP, '36110', ' ', DSRCCNTY) CITYCNTYDSRC
+	  FROM (
+	          SELECT DISTINCT CITYCNTYDSRC AS DSRCCNTY
+	               , SUBSTR(JUSO_CD,1,5) AS MNG_ZIP
+	            FROM FIDU.TENV_POST
+	           WHERE ATTE = #{ATTE}
+	        ORDER BY CITYCNTYDSRC
+	       )
+	</select>
+	
+	<select id = "getDoroList" resultType = "DataMap">
+	/* ##################### getDoroList ##################### */
+		<if test='ATTE.equals("세종특별자치시")'>
+			 SELECT JUSO_NM || ' ' || DECODE(BD_NO2, 0, BD_NO || '', BD_NO || '-' || BD_NO2) AS JUSO_NM
+			 	  , ZIP
+		      FROM FIDU.TENV_POST
+		     WHERE ATTE= #{ATTE}
+		       AND JUSO_NM || DECODE(BD_NO2, 0, BD_NO || '', BD_NO || '-' || BD_NO2) LIKE REPLACE('%' || #{JUSO_NM} || '%', ' ', '')
+		</if>
+		<if test='!ATTE.equals("세종특별자치시")'>
+			 SELECT JUSO_NM || ' ' || DECODE(BD_NO2, 0, BD_NO || '', BD_NO || '-' || BD_NO2) AS JUSO_NM
+			 	  , ZIP
+		      FROM FIDU.TENV_POST
+		     WHERE ATTE         = #{ATTE}
+		       AND CITYCNTYDSRC = #{CITYCNTYDSRC}
+		       AND JUSO_NM || DECODE(BD_NO2, 0, BD_NO || '', BD_NO || '-' || BD_NO2) LIKE REPLACE('%' || #{JUSO_NM} || '%', ' ', '')
+		</if>       	      
+	</select>
+	
+	<select id = "getGradNmList1" resultType = "DataMap">
+	/* ##################### getGradNmList1 ##################### */
+	  SELECT GRAD_GBN /* 업종분류코드 */
+	       , GRADNM /* 업종분류명 */
+	    FROM GIBU.TBRA_BSTYPGRAD
+	   WHERE BSTYP_CD = 'z'
+	     AND GRAD_GBN IN (SELECT DISTINCT BSTYP_CD FROM GIBU.TBRA_BSTYPGRAD)
+	   ORDER BY GRAD_GBN
+	</select>
+	
+	<select id = "getGradNmList2" resultType = "DataMap">
+	/* ##################### getGradNmList2 ##################### */
+	  SELECT BSTYP_CD  /* 업종분류코드 */
+	       , GRAD_GBN /* 업종코드 */
+	       , GRADNM  /* 업종명 */
+	    FROM GIBU.TBRA_BSTYPGRAD
+	   WHERE BSTYP_CD = #{GRAD_GBN}
+	   ORDER BY GRAD_GBN
+	</select>
+	
+	<select id="getSeqUpsoCd" resultType = "String">
+		SELECT 
+			TO_CHAR(SYSDATE, 'YYYYMMDD') || LPAD((SELECT NVL(TO_NUMBER(SUBSTR(MAX(UPSO_CD), 9, 3)), 0) + 1 FROM GIBU.TMOB_NEW_UPSO WHERE BRAN_CD = #{GIBU} AND UPSO_CD LIKE SUBSTR(UPSO_CD, 1, 8) || '%'), 3, '0') || #{GIBU} as UPSO_CD
+		FROM DUAL	
+		
+	</select>
+	
+	<insert id = "insertNewUpso">
+	/* ##################### insertNewUpso ##################### */      	
+		INSERT INTO GIBU.TMOB_NEW_UPSO
+		SELECT #{STAFF_CD} /* STAFF_CD 담당자코드 */
+		     , #{GIBU} /* BRAN_CD 지부코드 */
+		     , #{UPSO_CD} /* UPSO_CD 업소코드 */
+		     , #{UPSO_NM} /* UPSO_NM 업소명 */
+		     , #{UPSO_NEW_ZIP} /* UPSO_NEW_ZIP 업소우편번호 */
+		     , #{UPSO_NEW_ADDR1} /* UPSO_NEW_ADDR1 업소주소 */
+		     , #{UPSO_NEW_ADDR2} /* UPSO_NEW_ADDR2 업소상세주소 */
+		     , #{BD_MNG_NUM} 	/* BD_MNG_NUM 건물관리번호 */
+		     , #{UPSO_PHON} /* UPSO_PHON 업소전화번호 */
+		     , #{BIOWN_NUM} /* BIOWN_NUM 사업자번호 */
+		     , #{STNDAMT} 	/* STNDAMT 월정료 */
+		     , #{MNGEMSTR_NM} /* MNGEMSTR_NM 경영주 명 */
+		     , #{MNGEMSTR_HPNUM} /* MNGEMSTR_HPNUM 경영주 핸드폰번호 */
+		     , #{MNGEMSTR_RESINUM} /* MNGEMSTR_RESINUM 경영주 주민번호 */
+		     , #{PERMMSTR_NM} /* PERMMSTR_NM 허가주 명 */
+		     , #{PERMMSTR_HPNUM} /* PERMMSTR_HPNUM 허가주 핸드폰번호 */
+		     , #{PERMMSTR_RESINUM} /* PERMMSTR_RESINUM 허가주 주민번호 */
+		     , #{OPBI_DAY} 	/* OPBI_DAY 개업일자 */
+		     , #{BSTYP_CD} 	/* BSTYP_CD 업종분류 */
+		     , #{GRAD_GBN} 	/* UPSO_GRAD 업종 */
+		     , #{GRADNM} 	/* GRADNM 업종명 */
+		     , #{REMAK} 	/* REMAK 반주기정보 및 기타 */
+		     , #{USER_ID}	/* INSPRES_ID */
+		     , SYSDATE 		/* INS_DATE */
+		     , '' 			/* MODPRES_ID */
+		     , '' 			/* MOD_DATE */
+		     , #{LAT} 		/* 위도 */
+		     , #{LNG} 		/* 경도 */
+		  FROM DUAL	   
+	</insert>
+	
+	<insert id = "insertUpsoMap">
+	/* ##################### insertUpsoMap ##################### */      	
+		INSERT INTO GIBU.TBRA_UPSO_MAP (UPSO_CD, BRAN_CD, LAT, LNG, INSPRES_ID, INS_DATE)
+		VALUES (#{UPSO_CD}, #{GIBU}, #{LAT}, #{LNG}, #{USER_ID}, SYSDATE)  
+	</insert>
+	
+	<insert id="insertNewUpsoAttach">
+		/* ##################### insertNewUpsoAttach ##################### */
+		INSERT INTO GIBU.TMOB_NEW_UPSO_ATTACH(UPSO_CD, SEQ, FILE_NM, FILE_ROUT, FILE_TEMPNM, FILE_SIZE, FILES)
+		VALUES (#{UPSO_CD}, ROWNUM, #{fileOriNm}, /* '/home/jeus/komca_web/upload' */ #{filePath}, #{fileTempNm}, #{fileSize}, #{file,jdbcType=BLOB})
+	</insert>
+	
+	<update id="updateGovUpso">
+	/* ##################### updateGovUpso ##################### */
+	<if test='GBN.equals("노래방")'>
+
+		UPDATE GIBU.TGOV_NOREBANG
+	       SET STAT_GBN   = #{STAT_GBN}
+	         , BIGO       = #{BIGO}
+	         , INSPRES_ID = #{USER_ID}
+	         , INS_DATE   = SYSDATE
+	     WHERE ROW_NUM 	  = #{ROW_NUM}
+	
+	</if>
+	<if test='GBN.equals("단란")'>
+	    UPDATE GIBU.TGOV_DANRAN
+	       SET STAT_GBN   = #{STAT_GBN}
+	         , BIGO       = #{BIGO}
+	         , INSPRES_ID = #{USER_ID}
+	         , INS_DATE   = SYSDATE
+	     WHERE ROW_NUM 	  = #{ROW_NUM}
+	</if>
+	<if test='GBN.equals("유흥")'>
+	    UPDATE GIBU.TGOV_YUHEONG
+	       SET STAT_GBN   = #{STAT_GBN}
+	         , BIGO       = #{BIGO}
+	         , INSPRES_ID = #{USER_ID}
+	         , INS_DATE   = SYSDATE
+	     WHERE ROW_NUM 	  = #{ROW_NUM}
+	       AND GBN     	  = #{YUHEONG_GBN}
+	</if>
+	</update>
+	
+	<select id = "getUpsoScheduleList" resultType = "DataMap">
+	/* ##################### getUpsoScheduleList ##################### */
+	  SELECT TA.UPSO_CD
+	       , TA.UPSO_NM
+	       , TA.UPSO_STAT
+	       , TA.MNGEMSTR_NM
+	       , TA.PERMMSTR_NM
+	       , TA.UPSO_PHON
+	       , TA.MNGEMSTR_PHONNUM
+	       , TA.STAFF_CD
+	       , TA.STAFF_NM
+	       , TA.ADDR
+	       , TA.MONPRNCFEE
+	       , TA.GRAD
+	       , TA.GRADNM
+	       , TA.NEW_DAY
+	       , TC.VISIT_YN
+	       , (CASE WHEN (TA.CLSBS_YRMN IS NULL AND TA.NEW_DAY IS NOT NULL AND (TB.ACCU_DAY IS NULL OR TB.COMPN_DAY IS NOT NULL))
+	               THEN '관리중'
+	               WHEN (TA.CLSBS_YRMN IS NULL AND TA.NEW_DAY IS NOT NULL AND (TB.ACCU_DAY IS NOT NULL AND TB.COMPN_DAY IS NULL))
+	               THEN '관리|고소'
+	               WHEN (TA.CLSBS_YRMN IS NULL AND TA.NEW_DAY IS NULL AND (TB.ACCU_DAY IS NULL OR TB.COMPN_DAY IS NOT NULL))
+	               THEN '개발중'
+	               WHEN (TA.CLSBS_YRMN IS NULL AND TA.NEW_DAY IS NULL AND (TB.ACCU_DAY IS NOT NULL AND TB.COMPN_DAY IS NULL))
+	               THEN '개발|고소'
+	               WHEN (TA.CLSBS_YRMN IS NOT NULL AND TB.ACCU_DAY IS NOT NULL AND TB.COMPN_DAY IS NULL)
+	               THEN '폐업|고소'
+	               WHEN (TA.CLSBS_YRMN IS NOT NULL)
+	               THEN '폐업'
+	           END) AS UPSO_STAT_NM
+	       , (CASE WHEN (TB.ACCU_DAY IS NOT NULL AND TB.COMPN_DAY IS NULL)
+	               THEN 'Y'
+	               ELSE 'N'
+	           END) AS GOSO_YN
+	       , TB.ACCU_DAY
+	       , TB.ACCU_NUM
+	       , TB.ACCU_BRAN
+	       , TB.ACCU_GBN
+	       , TB.JUDG_CD
+	       , DECODE((SELECT COUNT(1) FROM LOG.KDS_SHOPROOM WHERE CO_STATUS = '07001' AND UPSO_CD = TA.UPSO_CD), 1, '수집', '비수집') AS LOG_GET
+	    FROM (SELECT XA.UPSO_CD
+	               , XA.UPSO_NM
+	               , XA.UPSO_STAT
+	               , XA.MNGEMSTR_NM
+	               , XA.PERMMSTR_NM
+	               , XA.UPSO_PHON
+	               , XA.MNGEMSTR_PHONNUM
+	               , XA.STAFF_CD
+	               , XD.HAN_NM                            STAFF_NM
+	               , XA.UPSO_NEW_ADDR1 || ' ' || XA.UPSO_NEW_ADDR2 || XA.UPSO_REF_INFO AS ADDR
+	               , XB.MONPRNCFEE
+	               , TRIM(XC.BSTYP_CD) || TRIM(XC.GRAD_GBN) AS GRAD
+	               , XC.GRADNM
+	               , XA.NEW_DAY
+	               , XE.ACCU
+	               , XA.UPSO_NEW_ZIP                      AS UPSO_ZIP
+	               , XA.CLSBS_YRMN
+	               , GIBU.GET_MNG_ZIP(XA.UPSO_CD)         AS MNG_ZIP
+	               , (SELECT NVL(COURT_NM, TOWNTWSHP) FROM FIDU.TENV_POST WHERE BD_MNG_NUM = XA.UPSO_BD_MNG_NUM) AS DONG
+	            FROM GIBU.TBRA_UPSO          XA
+	               , GIBU.TBRA_UPSORTAL_INFO XB
+	               , GIBU.TBRA_BSTYPGRAD     XC
+	               , INSA.TINS_MST01         XD
+	               , (
+	                       SELECT UPSO_CD, MAX(ACCU_DAY || ACCU_NUM) ACCU
+	                         FROM GIBU.TBRA_ACCU
+	                        WHERE UPSO_CD IN (
+	                                             SELECT UPSO_CD
+	                                               FROM GIBU.TBRA_UPSO
+	                                              WHERE BRAN_CD = #{GIBU}
+	                                         )
+	                     GROUP BY UPSO_CD
+	                 ) XE
+	               , (  SELECT MAX(JOIN_SEQ) JOIN_SEQ
+	                         , UPSO_CD
+	                      FROM (SELECT XB.UPSO_CD
+	                                 , XA.JOIN_SEQ
+	                              FROM GIBU.TBRA_UPSORTAL_INFO XA
+	                                 , (SELECT A.UPSO_CD
+	                                      FROM GIBU.TBRA_UPSO A
+	                                     WHERE 1=1
+	                                     <if test="UPSO_CD != null and UPSO_CD != ''">
+	                                       AND A.UPSO_CD = NVL(#{UPSO_CD}, A.UPSO_CD)
+	                                     </if>  
+	                                       AND A.BRAN_CD = #{GIBU}
+	                                     <if test="UPSO_NM != null and UPSO_NM != ''">  
+	                                       AND A.UPSO_NM LIKE DECODE(#{UPSO_NM}, NULL, A.UPSO_NM, '%' || #{UPSO_NM} || '%')
+	                                     </if>  
+	                                     ) XB
+	                             WHERE XA.UPSO_CD = XB.UPSO_CD) ZA
+	                  GROUP BY ZA.UPSO_CD) XF
+	           WHERE XA.UPSO_CD      = XF.UPSO_CD
+	             AND XB.UPSO_CD      = XF.UPSO_CD
+	             AND XB.JOIN_SEQ     = XF.JOIN_SEQ
+	             AND XC.BSTYP_CD     = XB.BSTYP_CD
+	             AND XC.GRAD_GBN     = XB.UPSO_GRAD
+	             AND XD.STAFF_NUM(+) = XA.STAFF_CD
+	             AND XE.UPSO_CD(+)   = XA.UPSO_CD
+	             AND XA.STAFF_CD     = #{USER_ID}) TA
+	       , GIBU.TBRA_ACCU TB
+	       , GIBU.TMOB_VISIT_PLAN TC
+	   WHERE TB.UPSO_CD(+)  = TA.UPSO_CD
+	     AND TB.ACCU_DAY(+) = SUBSTR(TA.ACCU, 1, 8)
+	     AND TB.ACCU_NUM(+) = SUBSTR(TA.ACCU, 9, 4)
+	     AND TA.UPSO_CD     = TC.UPSO_CD
+	     AND TC.STAFF_CD    = #{USER_ID}
+	     <if test='VISIT_DAY.equals("") or VISIT_DAY == null'>
+	     AND TC.VISIT_DAY   = (TO_CHAR(SYSDATE, 'YYYYMMDD'))
+	     </if>
+	     <if test="VISIT_DAY != null and VISIT_DAY != ''">
+	     AND TC.VISIT_DAY   = #{VISIT_DAY}
+	     </if>
+	     <if test="ADDR != null and ADDR != ''">
+	     AND REPLACE(TA.ADDR, ' ', '') LIKE '%' || REPLACE(#{ADDR}, ' ', '') || '%'
+	     </if>
+	     ORDER BY TA.UPSO_NM
+	</select>
+	
+	<select id = "getUpsoNoPayList" resultType = "DataMap">
+	/* ##################### getUpsoNoPayList ##################### */
+	  	SELECT XA.DEMD_MMCNT /* 미납개월 */
+		     , XA.UPSO_CD /* 업소코드 */
+		     , XA.UPSO_NM /* 업소명(SMS 자동문구에 사용) */
+		     , XA.BIOWN_NUM /* 사업자번호 */
+		     , XA.MNGEMSTR_NM /* 경영주(SMS 자동문구에 사용) */
+		     , XA.PERMMSTR_NM /* 허가주(SMS 자동문구에 사용) */
+		     , XA.MONPRNCFEE /* 월정료(SMS 자동문구에 사용) */
+		     , XA.UPSO_ADDR /* 업소주소 */
+		     , XA.UPSO_NEW_ADDR1 /* 네비용주소 */
+		     , XA.UPSO_PHON /* 업소전화번호(통화에사용) */
+		     , XA.MNGEMSTR_HPNUM /* 경영주핸드폰번호(목록,통화,SMS에사용) */
+		     , XA.TOT_USE_AMT /* 월사용료(SMS 자동문구에 사용) */
+		     , XA.TOT_ADDT_AMT /* 가산금(SMS 자동문구에 사용) */
+		     , XA.TOT_AMT /* 미납금(SMS 자동문구에 사용) */
+		     , XA.UPSO_ZIP /* 우편번호 */
+		     , XA.SIGUNGU /* 시군구 */
+		     , XA.DONG /* 동명 */
+		     , XA.BRAN_CD /* 지부코드 */
+		     , XA.STAFF_CD /* 담당사원코드 */
+		     , FIDU.GET_STAFF_NM(XA.STAFF_CD) AS STAFF_NM /* 담당사원명 */
+		     , (CASE WHEN (XA.CLSBS_YRMN IS NULL AND XA.NEW_DAY IS NOT NULL)
+		             THEN '관리중'
+		             WHEN (XA.CLSBS_YRMN IS NULL AND XA.NEW_DAY IS NULL)
+		             THEN '개발중'
+		             WHEN XA.CLSBS_YRMN IS NOT NULL
+		             THEN '폐업'
+		         END) AS UPSO_STAT_NM /* 업소상태 */
+		     , XA.GOSO_YN AS GOSO_YN /* 고소여부 */
+		     , XA.BSCON
+		     ,   (CASE WHEN XA.DEMD_MMCNT >= 6
+		     		<![CDATA[
+		              THEN (CASE WHEN (SELECT COUNT(1) FROM GIBU.TBRA_UPSO_VISIT WHERE UPSO_CD = XA.UPSO_CD AND VISIT_DAY >= SUBSTR(ADD_MONTHS(SYSDATE, -5), 1, 6) || '31') < 1
+		            ]]>
+		                         THEN 'X'
+		                         ELSE 'O'
+		                     END) 
+		              ELSE ''
+		          END) AS VISIT_YN
+		     , 	(CASE WHEN DEMD_MMCNT <![CDATA[>=]]>  TO_NUMBER(#{START_CNT_MON}) AND DEMD_MMCNT <![CDATA[<=]]> TO_NUMBER(#{END_CNT_MON}) 
+		                     THEN 'Y'
+		                     ELSE 'N'
+		                 END) AS DELAY_YN /*미납여부 */      
+		  FROM GIBU.TMOB_UPSO_LIST XA
+		 WHERE XA.BRAN_CD = #{GIBU}
+		   AND XA.STAFF_CD = #{USER_ID}
+		   <if test="ADDR != null and ADDR != ''">
+		   AND REPLACE(XA.UPSO_ADDR, ' ', '') LIKE '%' || REPLACE(#{ADDR}, ' ', '') || '%'
+		   </if>
+		   <if test="UPSO_NM != null and UPSO_NM != ''">
+		   AND XA.UPSO_NM LIKE #{UPSO_NM} || '%'
+		   </if>
+		   <if test='START_CNT_MON.equals("") or START_CNT_MON == null'>  
+		   AND XA.DEMD_MMCNT BETWEEN TO_NUMBER('6') AND TO_NUMBER('999')
+		   </if>
+		   <if test="START_CNT_MON != null and START_CNT_MON != ''">
+		   AND XA.DEMD_MMCNT BETWEEN TO_NUMBER(#{START_CNT_MON}) AND TO_NUMBER(#{END_CNT_MON})
+		   </if>
+		   
+	</select>
+	
+	<insert id="insertPerformMaster">
+	/* ##################### insertPerformMaster ##################### */
+	
+		INSERT INTO FIDU.TLEV_PRIOR_USEAPPRV 
+		SELECT #{PRIOR_APPRV_NUM}   AS PRIOR_APPRV_NUM		
+		     , #{BSCON_CD} 			  /* BSCON_CD 거래처코드              */
+		     , #{MDM_CD} 			 /* MDM_CD 매체코드 		  */
+		     , #{USETRM_START_DAY}  /* USETRM_START_DAY 시작일자*/
+		     , #{USETRM_END_DAY}   /* USETRM_END_DAY 종료일자     */
+		     , #{USE_TTL} 		  /* USE_TTL 제목 			*/
+		     , #{USE_LOC} 		 /* USE_LOC 지역 			   */
+		     , #{USE_LOCN} 		/* USE_LOCN 공연장소                    */
+		     , '' 			   /*  APPRV_NUM 			 */
+		     , #{USER_ID} 	  /* INSPRES_ID 			*/
+		     , SYSDATE 		 /* INS_DATE   			   */
+		     , #{STAFF_CD} 	/* MODPRES_ID 			  */
+		     , '' 		   /* MOD_DATE   			 */
+		     , #{BSCONHAN_NM} /* BSCONHAN_NM 거래처명 */ 
+		  FROM sys.dual
+	
+	</insert>
+	
+	<insert id="insertPerformVisitTemp">
+	/* ##################### insertPerformVisitTemp ##################### */
+	
+		INSERT INTO FIDU.TLEV_VISIT_TEMP (PRIOR_APPRV_NUM, VISIT_DAY, CTENT, INSPRES_ID, INS_DATE)
+		VALUES (#{PRIOR_APPRV_NUM}, (TO_CHAR(SYSDATE, 'YYYYMMDD')), #{CTENT}, #{USER_ID}, SYSDATE)
+	
+	</insert>
+	
+	<select id = "getPriorApprvNum" resultType = "String">
+	/* ##################### getPriorApprvNum ##################### */
+	SELECT  'P' || TO_CHAR (SYSDATE, 'YYYYMMDD') || LPAD (NVL (MAX (SUBSTR (PRIOR_APPRV_NUM, -3)), 0) + 1, 3, '0') AS PRIOR_APPRV_NUM
+	  FROM  FIDU.TLEV_PRIOR_USEAPPRV 
+	 WHERE  SUBSTR (PRIOR_APPRV_NUM, 2, 8) = TO_CHAR(SYSDATE, 'YYYYMMDD')
+	  	
+	</select>
+	
+	<insert id="insertPerformFile">
+	/* ##################### insertPerformFile ##################### */
+	INSERT INTO FIDU.TLEV_USEAPPRVPROPDOCNT(APPRV_NUM
+                                      , MNG_NUM
+                                      , ATTCH_FILE_NM
+                                      , ATTCH_FILE_CTENT
+                                      , PROP_DAY
+                                      , SVR_FILE_NM
+                                      , SVR_FILE_ROUT
+                                      , INSPRES_ID
+                                      , INS_DATE)
+	VALUES (#{PRIOR_APPRV_NUM}
+	      , (SELECT NVL(MAX(MNG_NUM + 1) ,1) AS MNG_NUM FROM FIDU.TLEV_USEAPPRVPROPDOCNT WHERE APPRV_NUM = #{PRIOR_APPRV_NUM})
+	      , #{fileOriNm}
+	      , #{file,jdbcType=BLOB}
+	      , TO_CHAR(SYSDATE, 'YYYYMMDD')
+	      , #{fileTempNm}
+	      /* , '/home/jeus/webdocs/fileupload' */
+	      , #{filePath}
+	      , #{USER_ID}
+	      , SYSDATE)
+	</insert>
+	
+	<insert id="insertUpsoVisitPlan">
+	/* ##################### insertUpsoVisitPlan ##################### */
+	INSERT INTO GIBU.TMOB_VISIT_PLAN
+	SELECT #{USER_ID}                     /*  STAFF_CD   */  
+	     , #{GIBU}                        /*  BRAN_CD    */  
+	     , TO_CHAR(SYSDATE, 'YYYYMMDD')   /*  VISIT_DAY  */
+	     , #{PRIOR_APPRV_NUM}             /*  UPSO_CD    */
+	     , 'Y'                            /*  VISIT_YN   */
+	     , #{LAT}                         /*  LAT        */
+	     , #{LNG}                         /*  LNG        */
+	     , #{USER_ID}                     /*  INSPRES_ID */
+	     , SYSDATE                        /*  INS_DATE   */
+	     , null
+         , null
+	  FROM DUAL
+	
+	</insert>
+	
+	<select id="getPerformList" resultType = "DataMap">
+	/* ##################### getPerformList ##################### */
+	   SELECT PRIOR_APPRV_NUM AS PRIOR_APPRV_NUM /* 사전승인번호 */
+		    , BSCON_CD AS BSCON_CD /* 거래처코드 */
+		    , BSCONHAN_NM AS BSCONHAN_NM /* 거래처명 */
+		    , SUBSTR(MDM_CD, 1, 4) AS SCLASS_CD /* 매체소분류 */
+		    , (SELECT SCLASS_CD_NM FROM FIDU.TENV_SCLASSCD WHERE SCLASS_CD = SUBSTR(MDM_CD, 1, 4) AND USE_YN = 'Y') AS SCLASS_CD_NM /* 매체소분류명 */
+		    , MDM_CD AS MDM_CD /* 매체코드 */
+		    , (SELECT MDM_CD_NM FROM FIDU.TENV_MDMCD WHERE MDM_CD = A.MDM_CD) AS MDM_CD_NM /* 매체코드명 */
+		    , USETRM_START_DAY AS USETRM_START_DAY /* 시작일 */
+		    , USETRM_END_DAY AS USETRM_END_DAY /* 종료일 */
+		    , USE_TTL AS USE_TTL /* 제목 */
+		    , USE_LOC AS USE_LOC /* 지역 */
+		    , (SELECT CODE_NM FROM FIDU.TENV_CODE WHERE HIGH_CD = '00414' AND USE_YN = 'Y' AND CODE_CD = A.USE_LOC) AS USE_LOC_NM /* 지역명 */
+		    , USE_LOCN AS USE_LOCN /* 공연장소 */
+	  FROM FIDU.TLEV_PRIOR_USEAPPRV A
+	 WHERE A.USETRM_START_DAY BETWEEN #{START_YRMN} || '00' AND #{END_YRMN} || '32'
+	   AND A.APPRV_NUM IS NULL
+	 ORDER BY A.USETRM_START_DAY, A.USE_TTL
+	</select>
+	
+	<select id="getPerformDetailList" resultType = "DataMap">
+	/* ##################### getPerformDetailList ##################### */
+	SELECT PRIOR_APPRV_NUM
+	     , VISIT_DAY
+	     , CTENT
+	     , INSPRES_ID
+	     , INS_DATE
+	     , MODPRES_ID
+	     , MOD_DATE 
+	  FROM FIDU.TLEV_VISIT_TEMP 
+	 WHERE PRIOR_APPRV_NUM = #{PRIOR_APPRV_NUM}
+	</select>
+	
+	<select id="getPerformFile" resultType = "DataMap">
+	/* ##################### getPerformFile ##################### */
+	SELECT APPRV_NUM /* 사전승인번호 */
+	     , MNG_NUM /* 관리번호 */
+	     , ATTCH_FILE_NM /* 첨부파일명 */
+	     , PROP_DAY /* 등록일자 */
+	     , SVR_FILE_NM /* 서버파일명 */
+	     , SVR_FILE_ROUT /* 서버파일경로 */
+	  FROM FIDU.TLEV_USEAPPRVPROPDOCNT
+	 WHERE APPRV_NUM = #{PRIOR_APPRV_NUM}
+	 ORDER BY MNG_NUM
+	</select>
+	
+	
+	<delete id="deletePerformDetail">
+	/* ##################### deletePerformDetail ##################### */
+	DELETE FROM FIDU.TLEV_VISIT_TEMP
+	 WHERE PRIOR_APPRV_NUM = #{PRIOR_APPRV_NUM}
+	   AND VISIT_DAY       = #{VISIT_DAY}	
+	</delete>
+	
+	<delete id="deleteUpsoList">
+	/* ##################### deleteUpsoList ##################### */
+	DELETE FROM GIBU.TMOB_UPSO_LIST 
+	 WHERE BRAN_CD  = #{GIBU} 
+	   AND STAFF_CD = #{USER_ID}
+	</delete>
+	
+	<insert id="insertUpsoList">
+	/* ##################### insertUpsoList ##################### */
+	INSERT INTO GIBU.TMOB_UPSO_LIST
+	SELECT XA.DEMD_MMCNT /* 미납개월 */
+	     , XB.UPSO_CD /* 업소코드 */
+	     , XB.UPSO_NM /* 업소명(SMS 자동문구에 사용) */
+	     , XB.BIOWN_NUM /* 사업자번호 */
+	     , XB.MNGEMSTR_NM /* 경영주(SMS 자동문구에 사용) */
+	     , XB.PERMMSTR_NM /* 허가주(SMS 자동문구에 사용) */
+	     , XA.MONPRNCFEE /* 월정료(SMS 자동문구에 사용) */
+	     , XB.CLSBS_YRMN /* 폐업년월 */
+	     , XB.NEW_DAY /* 신규일자 */
+	     , XB.UPSO_NEW_ZIP AS UPSO_ZIP /* 우편번호 */
+	     , (SELECT ATTE||' '||CITYCNTYDSRC FROM FIDU.TENV_POST WHERE BD_MNG_NUM = XB.UPSO_BD_MNG_NUM) AS SIGUNGU /* 시군구 */
+	     , (SELECT DECODE(COURT_NM, NULL, TOWNTWSHP, COURT_NM) FROM FIDU.TENV_POST WHERE BD_MNG_NUM = XB.UPSO_BD_MNG_NUM) AS DONG /* 동명 */
+	     , XB.UPSO_NEW_ADDR1 || DECODE(XB.UPSO_NEW_ADDR2, '', ' ', ', '||XB.UPSO_NEW_ADDR2) || XB.UPSO_REF_INFO AS UPSO_ADDR /* 업소주소 */
+	     , XB.UPSO_NEW_ADDR1 /* 네비용주소 */
+	     , XB.UPSO_PHON /* 업소전화번호(통화에사용) */
+	     , XB.MNGEMSTR_HPNUM /* 경영주핸드폰번호(목록,통화,SMS에사용) */
+	     , XA.TOT_USE_AMT /* 월사용료(SMS 자동문구에 사용) */
+	     , XA.TOT_ADDT_AMT /* 가산금(SMS 자동문구에 사용) */
+	     , XA.TOT_USE_AMT + XA.TOT_ADDT_AMT AS TOT_AMT /* 미납금(SMS 자동문구에 사용) */
+	     , XD.GOSO_YN AS GOSO_YN /* 고소여부 */
+	     , DECODE((SELECT BSCON_CD FROM LOG.KDS_SHOPROOM WHERE UPSO_CD = XB.UPSO_CD AND CO_STATUS = '07001'), 'E0003', 'TJ', 'E0006', 'KY', '') AS BSCON /* 반주기업체 */
+	     , XB.BRAN_CD /* 지부코드 */
+	     , XB.STAFF_CD /* 담당사원코드 */
+	  FROM (
+	        SELECT UPSO_CD
+	             , GIBU.FT_SPLIT(DEMDS, ',', 0) START_YRMN
+	             , GIBU.FT_SPLIT(DEMDS, ',', 1) END_YRMN
+	             , GIBU.FT_SPLIT(DEMDS, ',', 2) BSTYP_CD
+	             , GIBU.FT_SPLIT(DEMDS, ',', 3) UPSO_GRAD
+	             , GIBU.FT_SPLIT(DEMDS, ',', 4) MONPRNCFEE
+	             , GIBU.FT_SPLIT(DEMDS, ',', 5) MONPRNCFEE2
+	             , GIBU.FT_SPLIT(DEMDS, ',', 6) DEMD_GBN
+	             , GIBU.FT_SPLIT(DEMDS, ',', 7) DEMD_MMCNT
+	             , GIBU.FT_SPLIT(DEMDS, ',', 8) TOT_USE_AMT
+	             , GIBU.FT_SPLIT(DEMDS, ',', 9) + GIBU.FT_SPLIT(DEMDS, ',', 10) TOT_ADDT_AMT
+	          FROM (
+	                  SELECT UPSO_CD
+	                       , GIBU.FT_GET_DEMD_AMT2(UPSO_CD, MIN(YRMN), TO_CHAR(SYSDATE, 'YYYYMM'),  TO_CHAR(SYSDATE, 'YYYYMM'), 'O') DEMDS
+	                    FROM (
+	                          SELECT A.YRMN, A.UPSO_CD
+	                            FROM (
+	                                  SELECT YRMN, UPSO_CD, OPBI_YRMN
+	                                    FROM GIBU.COPY_YRMN
+	                                       , (
+	                                          /* 전체 미징수 조회 조건 */
+	                                          SELECT UPSO_CD
+	                                               , SUBSTR(OPBI_DAY, 1, 6) OPBI_YRMN
+	                                            FROM GIBU.TBRA_UPSO
+	                                           WHERE (CLSBS_YRMN IS NULL OR NVL(SUBSTR(CLSBS_INS_DAY,1,6), ' ') > TO_CHAR(SYSDATE, 'YYYYMM'))
+	                                             <![CDATA[
+	                                             AND (NEW_DAY IS NULL OR NEW_DAY <= TO_CHAR(SYSDATE, 'YYYYMM') || '31') ]]>
+	                                             AND BRAN_CD = DECODE(#{GIBU}, 'AL', BRAN_CD, #{GIBU})
+	                                             AND STAFF_CD = NVL(#{USER_ID}, STAFF_CD)
+	                                         )
+	                                     WHERE YRMN BETWEEN OPBI_YRMN AND TO_CHAR(ADD_MONTHS(SYSDATE, 1), 'YYYYMM')
+	                                       <![CDATA[
+	                                       AND OPBI_YRMN <= TO_CHAR(SYSDATE, 'YYYYMM') ]]>
+	                                 ) A
+	                            LEFT JOIN GIBU.TBRA_NOTE B ON (A.YRMN = B.NOTE_YRMN AND A.UPSO_CD = B.UPSO_CD)
+	                           WHERE B.NOTE_YRMN IS NULL
+	                          )
+	                GROUP BY UPSO_CD
+	               )
+	       ) XA
+	     , GIBU.TBRA_UPSO XB
+	     , GIBU.TBRA_BSTYPGRAD XC
+	     , (
+		 SELECT UPSO_CD
+               	      , MAX(GOSO_YN) GOSO_YN
+            	   FROM (
+                         SELECT UPSO_CD
+                              , DECODE(COMPN_DAY, NULL, '고소중', NULL) GOSO_YN
+                           FROM GIBU.TBRA_ACCU
+                          WHERE (JUDG_CD IN ('2','4','10','11','12','13','14') OR JUDG_CD IS NULL)
+                         )
+        	   GROUP BY UPSO_CD
+	       ) XD
+	 WHERE XB.UPSO_CD    = XA.UPSO_CD
+	   AND XC.GRAD_GBN   = XA.UPSO_GRAD
+	   AND XC.BSTYP_CD   = XA.BSTYP_CD
+	   AND XD.UPSO_CD(+) = XB.UPSO_CD
+	   
+	</insert>
+	
+	
+	<select id="getUpsoSing" resultType = "DataMap">
+	/* ##################### getUpsoSing ##################### */
+		SELECT ROW_NUM /* PK */
+             , '개업' AS OPEN_GBN /* 개폐업구분 */
+             , '노래방' AS GBN /* 구분 */
+             , BPLC_NM /* 업소명 */
+             , RDN_WHL_ADDR /* 주소 */
+             , APV_PERM_YMD /* 인허가일자 */
+             , FACIL_AR /* 시설면적 */
+             , NOROOM_CNT /* 노래방실 수 */
+             , BGROOM_CNT /* 청소년실 수 */
+             , CUL_PHYED_COB_NM AS SNT_COB_NM /* 업종명 */
+             , STAT_GBN /* 1:기등록 2:개발예정 9:기타 */
+             , BIGO /* 상태 */
+             , ADDR1 /* 동일주소조회용 */
+             , '' AS YUHEONG_GBN
+             , LAT
+             , LNG
+          FROM GIBU.TGOV_NOREBANG
+         WHERE ROW_NUM = #{ROW_NUM}
+	</select>
+	
+	<select id="getUpsoDanLan" resultType = "DataMap">
+	/* ##################### getUpsoDanLan ##################### */
+		SELECT ROW_NUM
+             , '개업' AS OPEN_GBN
+             , '단란' AS GBN
+             , BPLC_NM
+             , RDN_WHL_ADDR
+             , APV_PERM_YMD
+             , FACIL_TOT_SCP
+             , 0 AS NOROOM_CNT
+             , 0 AS BGROOM_CNT
+             , SNT_COB_NM
+             , STAT_GBN
+             , BIGO
+             , ADDR1
+             , '' AS YUHEONG_GBN
+             , LAT
+             , LNG
+          FROM GIBU.TGOV_DANRAN
+         WHERE ROW_NUM = #{ROW_NUM}
+	</select>
+	
+	<select id="getUpsoPleasure" resultType = "DataMap">
+	/* ##################### getUpsoPleasure ##################### */
+		SELECT ROW_NUM
+             , '개업' AS OPEN_GBN
+             , '유흥' AS GBN
+             , BPLC_NM
+             , RDN_WHL_ADDR
+             , APV_PERM_YMD
+             , TO_NUMBER(FACIL_TOT_SCP) AS FACIL_TOT_SCP
+             , 0 AS NOROOM_CNT
+             , 0 AS BGROOM_CNT
+             <![CDATA[
+             , (CASE WHEN GBN <= '04' THEN CUL_PHYED_COB_NM ]]>
+                     ELSE SNT_COB_NM
+                 END) AS SNT_COB_NM
+             , STAT_GBN
+             , BIGO
+             , ADDR1
+             , GBN AS YUHEONG_GBN
+             , LAT
+             , LNG
+          FROM GIBU.TGOV_YUHEONG
+          <![CDATA[
+         WHERE GBN <> '01' ]]>
+           AND GBN = #{YUHEONG_GBN}
+           AND ROW_NUM = #{ROW_NUM}
+	</select>
+	
+	<select id="getUpsoNew" resultType = "DataMap">
+	/* ##################### getUpsoNew ##################### */
+		SELECT STAFF_CD /* 담당자 */
+	         , BRAN_CD /* 지부코드 */
+	         , UPSO_CD /* 업소코드 */
+	         , UPSO_NM /* 업소명 */
+	         , UPSO_NEW_ZIP /* 업소우편번호 */
+	         , UPSO_NEW_ADDR1 /* 업소기본주소 */
+	         , UPSO_NEW_ADDR2 /* 업소상세주소 */
+	         , UPSO_PHON /* 업소전화번호 */
+	         , BIOWN_NUM /* 사업자번호 */
+	         , MNGEMSTR_NM /* 경영주 명 */
+	         , MNGEMSTR_HPNUM /* 경영주 핸드폰번호 */
+	         , MNGEMSTR_RESINUM /* 경영주 주민번호 */
+	         , PERMMSTR_NM /* 허가주 명 */
+	         , PERMMSTR_HPNUM /* 허가주 핸드폰번호 */
+	         , PERMMSTR_RESINUM /* 허가주 주민번호 */
+	         , OPBI_DAY /* 개업일자 */
+	         , BSTYP_CD /* 업종구분코드 */
+	         , UPSO_GRAD /* 업종코드 */
+	         , REMAK /* 반주기정보 및 비고 */
+      FROM GIBU.TMOB_NEW_UPSO
+     WHERE UPSO_CD = #{UPSO_CD}
+	</select>
+	
+	<update id = "updateUpsoVisitDetail">
+	/* ##################### updateUpsoVisitDetail ##################### */
+      	UPDATE GIBU.TBRA_UPSO_VISIT_BRE
+		   SET REMAK      = #{DET_REMAK}
+		     , MODPRES_ID = #{USER_ID}
+		     , MOD_DATE   = SYSDATE
+		 WHERE VISIT_DAY = #{VISIT_DAY}
+		   AND VISIT_NUM = #{VISIT_NUM}
+		   AND UPSO_CD   = #{UPSO_CD}
+		   AND JOB_GBN   = #{JOB_GBN}
+		   AND VISIT_SEQ = #{VISIT_SEQ} 
+	</update>
+	
+	<update id = "updatePerformDetail">
+	/* ##################### updatePerformDetail ##################### */
+      	UPDATE FIDU.TLEV_VISIT_TEMP
+		   SET CTENT      = #{CTENT}
+		     , MODPRES_ID = #{USER_ID}
+		     , MOD_DATE   = SYSDATE
+		 WHERE PRIOR_APPRV_NUM = #{PRIOR_APPRV_NUM}
+		   AND VISIT_DAY       = #{VISIT_DAY}
+	</update>
+	
+	<select id="getNewUpsoDetail" resultType = "DataMap">
+	/* ##################### getNewUpsoDetail ##################### */
+		SELECT STAFF_CD /* 담당자 */
+	         , BRAN_CD /* 지부코드 */
+	         , UPSO_CD /* 업소코드 */
+	         , UPSO_NM /* 업소명 */
+	         , UPSO_NEW_ZIP /* 업소우편번호 */
+	         , UPSO_NEW_ADDR1 /* 업소기본주소 */
+	         , UPSO_NEW_ADDR2 /* 업소상세주소 */
+	         , UPSO_PHON /* 업소전화번호 */
+	         , BIOWN_NUM /* 사업자번호 */
+	         , MNGEMSTR_NM /* 경영주 명 */
+	         , MNGEMSTR_HPNUM /* 경영주 핸드폰번호 */
+	         , MNGEMSTR_RESINUM /* 경영주 주민번호 */
+	         , PERMMSTR_NM /* 허가주 명 */
+	         , PERMMSTR_HPNUM /* 허가주 핸드폰번호 */
+	         , PERMMSTR_RESINUM /* 허가주 주민번호 */
+	         , OPBI_DAY /* 개업일자 */
+	         , BSTYP_CD /* 업종구분코드 */
+	         , UPSO_GRAD AS GRAD_GBN  /* 업종코드 */
+	         , GRADNM	/* 업종명 */
+	         , BD_MNG_NUM	/* 건물관리번호 */
+	         , STNDAMT	/* 월정료 */
+	         , REMAK /* 반주기정보 및 비고 */
+	      FROM GIBU.TMOB_NEW_UPSO
+	     WHERE UPSO_CD = #{UPSO_CD}
+	</select>
+	
+	<select id="getSameGovUpso" resultType = "DataMap">
+	/* ##################### getSameGovUpso ##################### */
+		SELECT BRAN_CD 
+		     , UPSO_CD 
+		     , UPSO_NM 
+		     , UPSO_NEW_ADDR1 || ' ' || UPSO_NEW_ADDR2 || UPSO_REF_INFO AS ADDR 
+		     , OPBI_DAY 
+		     , CLSBS_YRMN 
+		FROM GIBU.TBRA_UPSO 
+		WHERE UPSO_NEW_ADDR1 LIKE #{ADDR} || '%' 
+		ORDER BY UPSO_NM, OPBI_DAY
+	</select>
+	
+	<delete id="deletePerformFile">
+	DELETE 
+	  FROM FIDU.TLEV_USEAPPRVPROPDOCNT 
+	 WHERE APPRV_NUM = #{PRIOR_APPRV_NUM} 
+	  AND MNG_NUM = #{MNG_NUM}
+	</delete>
+	
+	<select id="getNewUpsoFile" resultType = "DataMap">
+	/* ##################### getNewUpsoFile ##################### */
+	SELECT  UPSO_CD, 
+       		SEQ, 
+       		FILE_TEMPNM, 
+       		FILE_ROUT 
+ 	  FROM GIBU.TMOB_NEW_UPSO_ATTACH
+	 WHERE UPSO_CD = #{UPSO_CD}
+	</select>
+	
+</mapper>

@@ -1,0 +1,423 @@
+package com.appg.Komca.mybatis.api.mapper;
+
+import java.util.List;
+
+import org.apache.ibatis.annotations.Param;
+import org.springframework.stereotype.Repository;
+
+import com.appg.Komca.common.bean.DataMap;
+@Repository
+
+public interface UpsoMapper {
+
+	
+	/**
+	 * 업소리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getUpsoList(DataMap params);
+	
+	/**
+	 * 정부 3.0 동일주소 조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getSameGovUpso(DataMap params);
+	
+	/**
+	 * 업소리스트(검색)
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getSearchUpsoList(DataMap params);
+	
+	/**
+	 * 업소리스트(정부3.0)
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getGovUpsoList(DataMap params);
+	
+	/**
+	 * 업소리스트(신규개발업소)
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getNewUpsoList(DataMap params);
+	
+	/**
+	 * 업소상세 조회
+	 * @param params
+	 * @return
+	 */
+	public DataMap getUpsoDetail(DataMap params);
+	
+	/**
+	 * 업소원장 상세 조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getUpsoNoteDetail(DataMap params);
+	
+	/**
+	 * SMS 전송
+	 * @param params
+	 * @return
+	 */
+	public int insertSMS(DataMap params);
+	
+	/**
+	 * 상용구 내용 조회(SMS/제목)
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getMyContentList(DataMap params);
+	
+	/**
+	 * 업소 방문 리스트 조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getUpsoVisitList(DataMap params);
+	
+	/**
+	 * 업소상세 조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getUpsoVisitDetail(DataMap params);
+	
+	/**
+	 * 업소 방문 사진 조회
+	 * @param params
+	 * @return
+	 */
+	public DataMap getUpsoVisitFile(DataMap params);
+	
+	/**
+	 * 업소 방문 리스트 조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getUpsoAccuList(DataMap params);
+	
+	/**
+	 * 고소 사건진행과정 리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getUpsoAccuMemoList(DataMap params);
+	
+	/**
+	 * 현재원금 조회
+	 * @param params
+	 * @return
+	 */
+	public DataMap getTotUseAmt(DataMap params);
+	
+	/**
+	 * 고소 사건진행과정 리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getCodeList(DataMap params);
+	
+	/**
+	 * 방문등록 SEQ 획득
+	 * @param params
+	 * @return
+	 */
+	public String getVisitSeq(DataMap params);
+	
+	/**
+	 * 방문예정 UPDATE
+	 * @param params
+	 * @return
+	 */
+	public int updateUpsoVisitPlan(DataMap params);
+	
+	/**
+	 * 방문 리스트 등록
+	 * @param params
+	 * @return
+	 */
+	public int insertUpsoVisit(DataMap params);
+	
+	/**
+	 * 방문 사진 등록
+	 * @param params
+	 * @return
+	 */
+	//public int insertUpsoVisitAttch(DataMap params);
+	
+	
+	/**
+	 * 방문 업소 상세 등록
+	 * @param params
+	 * @return
+	 */
+	public int insertUpsoVisitDetail(DataMap params);
+	
+	/**
+	 * 방문내역 수정
+	 * @param params
+	 * @return
+	 */
+	public int updateUpsoVisit(DataMap params);
+	
+	/**
+	 * 방문내역상세 삭제
+	 * @param params
+	 * @return
+	 */
+	public int deleteUpsoVisitDetail(DataMap params);
+	
+	/**
+	 * 시도 리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getSiDoList(DataMap params);
+	
+	/**
+	 * 시군구 리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getSiGunGuList(DataMap params);
+	
+	/**
+	 * 도로명 리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getDoroList(DataMap params);
+	
+	/**
+	 * 업종1 리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getGradNmList1(DataMap params);
+	
+	/**
+	 * 업종2 리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getGradNmList2(DataMap params);
+	
+	/**
+	 * 신규업소 등록
+	 * @param params
+	 * @return
+	 */
+	public int insertNewUpso(DataMap params);
+	
+	/**
+	 * 신규업소 등록
+	 * @param params
+	 * @return
+	 */
+	public int insertUpsoMap(DataMap params);
+	
+	/**
+	 * 신규업소첨부파일등록
+	 * @param params
+	 * @return
+	 */
+	//public int insertNewUpsoAttach(DataMap params);
+	
+	/**
+	 * UPSO_CD SEQ 채번
+	 * @param params
+	 * @return
+	 */
+	public String getSeqUpsoCd(DataMap params);
+	
+	/**
+	 * 정부3.0 개발예정 업소 수정
+	 * @param params
+	 * @return
+	 */
+	public int updateGovUpso(DataMap params);
+	
+	/**
+	 * 방문예정업소 리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getUpsoScheduleList(DataMap params);
+	
+	/**
+	 * 미납업소 리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getUpsoNoPayList(DataMap params);
+	
+	/**
+	 * 사전승인번호 
+	 * @param params
+	 * @return
+	 */
+	public String getPriorApprvNum(DataMap params);
+	
+	/**
+	 * 무대공연마스터 등록
+	 * @param params
+	 * @return
+	 */
+	public int insertPerformMaster(DataMap params);
+	
+	/**
+	 * 무대공연관리내역 등록
+	 * @param params
+	 * @return
+	 */
+	public int insertPerformVisitTemp(DataMap params);
+	
+	/**
+	 * 무대공연관리내역 등록
+	 * @param params
+	 * @return
+	 */
+	public int deletePerformDetail(DataMap params);
+	
+	/**
+	 * 무대공연첨부파일 등록
+	 * @param params
+	 * @return
+	 */
+	//public int insertPerformFile(DataMap params);
+	
+	/**
+	 * 방문예정 등록
+	 * @param params
+	 * @return
+	 */
+	public int insertUpsoVisitPlan(DataMap params);
+	
+	/**
+	 * 무대공연 조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getPerformList(DataMap params);
+	
+	/**
+	 * 무대공연관리내역 조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getPerformDetailList(DataMap params);
+	
+	/**
+	 * 무대공연첨부파일조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getPerformFile(DataMap params);
+	
+	
+	/**
+	 * DELETE UPSO_LIST TABLE
+	 * @param params
+	 * @return
+	 */
+	public int deleteUpsoList(DataMap params);
+	
+	
+	/**
+	 * INSERT UPSO_LIST TABLE (갱신)
+	 * @param params
+	 * @return
+	 */
+	public int insertUpsoList(DataMap params);
+
+	/**
+	 * 무대공연 첨부파일 저장
+	 * @param params
+	 * @return
+	 */
+	//public int insertPerformFile(String filePath, String fileOriNm, String fileTempNm, String fileSize, byte[] file, String PRIOR_APPRV_NUM);
+	public int insertPerformFile(DataMap params);
+	/**
+	 * 방문내역 첨부파일 저장
+	 * @param params
+	 * @return
+	 */
+	public int insertUpsoVisitAttch(DataMap params);
+
+	/**
+	 * 신규업소 첨부파일 저장
+	 * @param params
+	 * @return
+	 */
+	public int insertNewUpsoAttach(DataMap params);
+
+	/**
+	 * 정부 3.0(노래방) 상세
+	 * @param params
+	 * @return
+	 */
+	public DataMap getUpsoSing(Object object);
+	
+	/**
+	 * 정부 3.0(단란) 상세
+	 * @param params
+	 * @return
+	 */
+	public DataMap getUpsoDanLan(Object object);
+	
+	/**
+	 * 정부 3.0(유흥) 상세
+	 * @param params
+	 * @return
+	 */
+	public DataMap getUpsoPleasure(Object object);
+	
+	/**
+	 * 신규개발업소 상세
+	 * @param params
+	 * @return
+	 */
+	public DataMap getUpsoNew(Object object);
+
+	/**
+	 * 방문내역 상세 수정
+	 * @param params
+	 * @return
+	 */
+	public int updateUpsoVisitDetail(DataMap paramsMap);
+	
+	/**
+	 * 무대공연관리내역 수정
+	 * @param params
+	 * @return
+	 */
+	public int updatePerformDetail(DataMap paramsMap);
+
+	/**
+	 * 신규업소 상세
+	 * @param params
+	 * @return
+	 */
+	public DataMap getNewUpsoDetail(DataMap paramsMap);
+	
+	/**
+	 * 무대공연내역 파일 삭제
+	 * @param params
+	 * @return
+	 */
+	public int deletePerformFile(DataMap paramsMap);
+	
+	/**
+	 * 신규업소 이미지조회
+	 * @param params
+	 * @return
+	 */
+	public DataMap getNewUpsoFile(DataMap paramsMap);
+	
+}

@@ -1,0 +1,735 @@
+package com.appg.Komca.service;
+
+import java.text.SimpleDateFormat;
+import java.util.List;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.appg.Komca.common.bean.DataMap;
+import com.appg.Komca.common.bean.ListBean;
+import com.appg.Komca.common.constants.Constants;
+import com.appg.Komca.common.exception.DefSeCode;
+import com.appg.Komca.common.exception.ServiceException;
+import com.appg.Komca.common.util.DataUtil;
+import com.appg.Komca.common.util.EncryptMD5;
+import com.appg.Komca.common.util.ListPage;
+import com.appg.Komca.mybatis.api.mapper.CommMapper;
+import com.appg.Komca.mybatis.api.mapper.UpsoMapper;
+
+@Service
+public class SvcComm
+{
+	@SuppressWarnings("unused")
+	private final static Log	logger	= LogFactory.getLog(SvcComm.class);
+
+	@Autowired	private CommMapper			commMapper;
+	@Autowired	private UpsoMapper			upsoMapper;
+	/**
+	 * 상용구 내용 조회(SMS/제목)
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getMyContentList(String GIBU, String USER_ID, String CONTENT_TYPE) throws ServiceException {
+		/*
+		 *  ################################
+		 *  STEP 1 : 상용구 내용 조회(SMS/제목)
+		 *  ################################
+		*/
+		DataMap retVal = new DataMap();
+		List<DataMap> myContentList = null;
+		
+		try {
+			
+			DataMap params = new DataMap();
+			
+			if(CONTENT_TYPE == null) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			params.put("GIBU"	  	 , GIBU);
+			params.put("USER_ID"  	 , USER_ID);
+			params.put("CONTENT_TYPE", CONTENT_TYPE);
+			
+			myContentList = commMapper.getMyContentList(params);
+
+			if(myContentList == null)
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return myContentList;
+	}
+	
+	
+	/**
+	 * SMS 전송
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public void sendSMS(String upsoCD, String  mngemStrNM, String mngemStrHP, String  msg, String upsoNM, String gibu, String userID) 
+			throws ServiceException {
+		/*
+		 *  ################################
+		 *  STEP 1 : SMS 전송
+		 *  ################################
+		*/
+		
+		int result = 0;
+		try {
+			
+			DataMap params = new DataMap();
+			
+			if((upsoCD == null || upsoCD.equals("")) || (msg == null || msg.equals("")) ) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			if(msg.getBytes().length > 80) {
+				params.put("sendType"	  	, "0");	
+			} else {
+				params.put("sendType"	  	, "1");
+			}
+			
+			params.put("UPSO_CD"	  	, upsoCD);
+			params.put("MNGEMSTR_NM"	, mngemStrNM);
+			params.put("MNGEMSTR_HPNUM"	, mngemStrHP);
+			params.put("MSG"			, msg);
+			params.put("UPSO_NM"	  	, upsoNM);
+			params.put("GIBU"	  		, gibu);
+			params.put("USER_ID"	  	, userID);
+			
+			result = commMapper.insertSMS(params);
+
+			if(result < 1)
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+	}
+	
+	/**
+	 * 상담자/방문정보 구분 공통코드 조회
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getCodeList(DataMap paramsMap) throws ServiceException {
+
+		List<DataMap> CodeList = null;
+		try {
+			
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			//방문정보 구분코드 조회
+			if(paramsMap.get("CODE_TYPE").equals("G")) {
+				paramsMap.put("HIGH_CD", "00198");
+				
+			//상담자 구분 공통코드 조회	
+			} else if(paramsMap.get("CODE_TYPE").equals("T")) {
+				paramsMap.put("HIGH_CD", "00434");
+			
+			//정부3.0 업소 등록 상태코드 조회
+			} else if(paramsMap.get("CODE_TYPE").equals("S")) {
+				paramsMap.put("CODE_TYPE", "STAT");
+				paramsMap.put("HIGH_CD", "00433");
+			}
+			
+			CodeList = commMapper.getCodeList(paramsMap);
+	
+			if(CodeList == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return CodeList;
+	}
+	
+	/**
+	 * 시도 리스트
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getSiDoList(DataMap paramsMap) throws ServiceException {
+
+		List<DataMap> CodeList = null;
+		try {
+			
+			CodeList = commMapper.getSiDoList(paramsMap);
+	
+			if(CodeList == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return CodeList;
+	}
+	
+	/**
+	 * 시군구 리스트
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getSiGunGuList(DataMap paramsMap) throws ServiceException {
+
+		List<DataMap> CodeList = null;
+		try {
+			
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			CodeList = commMapper.getSiGunGuList(paramsMap);
+	
+			if(CodeList == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return CodeList;
+	}
+	
+	/**
+	 * 도로명 리스트
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getDoRoList(DataMap paramsMap) throws ServiceException {
+
+		List<DataMap> CodeList = null;
+		try {
+			
+			CodeList = commMapper.getDoroList(paramsMap);
+			if(CodeList == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return CodeList;
+	}
+	
+	/**
+	 * 업종1 리스트
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getGradNmList1(DataMap paramsMap) throws ServiceException {
+
+		List<DataMap> CodeList = null;
+		try {
+			
+			
+			CodeList = commMapper.getGradNmList1(paramsMap);
+	
+			if(CodeList == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return CodeList;
+	}
+	
+	/**
+	 * 업종2 리스트
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getGradNmList2(DataMap paramsMap) throws ServiceException {
+
+		List<DataMap> CodeList = null;
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			CodeList = commMapper.getGradNmList2(paramsMap);
+	
+			if(CodeList == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return CodeList;
+	}
+	
+
+	/**
+	 * 무대공연 공통코드조회(매체 소분류)
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getPerformCodeList(DataMap paramsMap) throws ServiceException {
+
+		List<DataMap> CodeList = null;
+		try {
+			
+			if(paramsMap.get("CODE_TYPE") == null || 
+						( paramsMap.get("CODE_TYPE").equals("1") &&  paramsMap.get("SCLASS_CD") == null ) )  
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+				
+				
+			CodeList = commMapper.getPerformCodeList(paramsMap);
+	
+			if(CodeList == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return CodeList;
+	}
+	
+	
+	/**
+	 * 지역코드 조회
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getAreaCodeList(DataMap paramsMap) throws ServiceException {
+
+		List<DataMap> CodeList = null;
+		try {
+			
+			CodeList = commMapper.getAreaCodeList(paramsMap);
+	
+			if(CodeList == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return CodeList;
+	}
+	
+	/**
+	 * 거래처 코드 리스트 조회
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getBsconCodeList(DataMap paramsMap) throws ServiceException {
+
+		List<DataMap> CodeList = null;
+		try {
+			
+			CodeList = commMapper.getBsconCodeList(paramsMap);
+	
+			if(CodeList == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return CodeList;
+	}
+	
+	
+	/**
+	 * 담당자 업소연체율 조회
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getReportArrear(DataMap paramsMap) throws ServiceException {
+		List<DataMap> list = null;
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) 
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			
+			
+			/*  ################################
+			 *   STEP 2 : 담당자 업소연체율 조회
+			 *  ################################
+			 */  
+			list = commMapper.getReportArrear(paramsMap);
+			
+			if(list == null) 
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;
+	}
+	
+	/**
+	 * 상용구 설정
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public void insertMyContent(DataMap paramsMap) throws ServiceException {
+
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			/*  ################################
+			 *   STEP 2 : 상용구 설정
+			 *  ################################
+			 */  
+			if(commMapper.insertMyContent(paramsMap) < 1) 
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+	}
+	
+	/**
+	 * 상용구 수정
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public void updateMyContent(DataMap paramsMap) throws ServiceException {
+
+		try {
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			/*  ################################
+			 *   STEP 2 : 상용구 수정
+			 *  ################################
+			 */  
+			if(commMapper.updateMyContent(paramsMap) < 1) 
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+	}
+	
+	/**
+	 * 상용구 삭제
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public void deleteMyContent(DataMap paramsMap) throws ServiceException {
+
+		try {
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			/*  ################################
+			 *   STEP 2 : 상용구 삭제
+			 *  ################################
+			 */  
+			if(commMapper.deleteMyContent(paramsMap) < 1) 
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+	}
+	
+	/**
+	 * 담당자(별) 징수율 조회
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getReportCollect(DataMap paramsMap) throws ServiceException {
+		List<DataMap> list = null;
+		List<DataMap> retList = null;
+		List<DataMap> sumList = null;
+		int sumMonAmt = 0;
+		int sumUpsoCnt = 0;
+		int sumColAmt = 0;
+		int sumColUpsoCnt = 0;
+		double sumRate = 0;
+		
+		try {
+			
+			String curYrmn = new SimpleDateFormat("yyyyMM").format(new java.util.Date());
+			
+			if(paramsMap.get("DEMD_YRMN").equals("") || paramsMap.get("DEMD_YRMN") == null) {
+				paramsMap.put("DEMD_YRMN", curYrmn);
+			}
+			int endCnt = Integer.parseInt(((String) paramsMap.get("DEMD_YRMN")).substring(4, 6));
+			
+			String startYrmn = curYrmn.substring(0,4) + "01";
+			String startYr   = curYrmn.substring(0,4);
+			String gugun_J= null;
+			String gugun_K= null;
+			
+			/*  ################################
+			 *   STEP 1 : 담당자(별) 징수율 조회
+			 *  ################################
+			 */  
+			
+			// 년월 기준 조회
+			if(paramsMap.get("TYPE").equals("0")) {
+				retList = commMapper.getReportCollect(paramsMap);
+				
+			} else if(paramsMap.get("TYPE").equals("1")) {
+				
+				for( int i=1; i <= endCnt; i++  ) {
+					paramsMap.put("DEMD_YRMN", startYr+String.format("%02d", i));
+					list = commMapper.getReportCollect(paramsMap);
+					
+					for(int j = 0; j < list.size(); j++) {
+						if(sumList == null) {
+							sumList = list;
+							break;
+						} else {
+							gugun_J = list.get(j).getString("GUGUN");
+							
+							for(int k=0; k<sumList.size(); k++) {
+								gugun_K = sumList.get(k).getString("GUGUN");
+								if(gugun_J.equals(gugun_K)) {
+									sumMonAmt     = sumList.get(k).getInt("MON_AMT") + list.get(j).getInt("MON_AMT");
+									sumUpsoCnt    = sumList.get(k).getInt("UPSO_CNT") + list.get(j).getInt("UPSO_CNT");
+									sumColAmt     = sumList.get(k).getInt("COL_AMT") + list.get(j).getInt("COL_AMT");
+									sumColUpsoCnt = sumList.get(k).getInt("COL_UPSO_CNT") + list.get(j).getInt("COL_UPSO_CNT");
+									sumRate 	  = sumList.get(k).getDouble("RATE") + list.get(j).getDouble("RATE");
+									
+									DataMap sumMap = new DataMap();
+									sumMap.put("GUGUN"	 	 , gugun_K);
+									sumMap.put("STAFF_NM"	 , sumList.get(k).getString("STAFF_NM"));
+									sumMap.put("MON_AMT"	 , sumMonAmt);
+									sumMap.put("UPSO_CNT"	 , sumUpsoCnt);
+									sumMap.put("COL_AMT"	 , sumColAmt);
+									sumMap.put("COL_UPSO_CNT", sumColUpsoCnt);
+									sumMap.put("RATE"		 , String.format("%.1f",sumRate));
+									sumList.remove(k);
+									sumList.add(k,sumMap);
+									break;
+									
+								}
+							}
+						}
+					}
+				}
+				retList = sumList;
+
+			}
+			
+			
+			if(retList == null) 
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return retList;
+	}
+	
+	/**
+	 * 담당자별 고소율
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getReportGoso(DataMap paramsMap) throws ServiceException {
+		List<DataMap> list = null;
+		try {
+			/*  ################################
+			 *   STEP 1 : 담당자별 고소율 조회
+			 *  ################################
+			 */  
+			list = commMapper.getReportGoso(paramsMap);
+			
+			if(list == null) 
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;
+	}
+
+	
+	/**
+	 * 파일 등록
+	 *  신규, 무대, 방문예정 업소 이미지 업로드
+	 *  ACT_TYPE = 무대공연 : S, 방문 : V, 신규 : N
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	//public List<DataMap> insertFile(DataMap paramsMap, String filePath, String fileOriNm, String fileTempNm, String fileSize, byte[] file) throws ServiceException {
+	public void insertFile(DataMap paramsMap) throws ServiceException {	
+		String ActType = paramsMap.getString("ACT_TYPE");
+		try {
+			
+			System.out.println(">>>>>>>>>>>>>>>>>>>>>>");
+			
+			// 무대공연 첨부파일 등록 및 삭제
+			if(ActType.equals("S")) {
+				// 무대공연 첨부파일 등록
+				if(paramsMap.get("MNG_NUM").equals("")) {
+					if(upsoMapper.insertPerformFile(paramsMap) < 1 )
+						throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+				// 무대공연 첨부파일 삭제
+				} else {
+					if(upsoMapper.deletePerformFile(paramsMap) < 1 )
+						throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+				}
+			}
+			
+			// 방문내역 첨부파일 등록
+			if(ActType.equals("V")) {
+				if(upsoMapper.insertUpsoVisitAttch(paramsMap) < 1)
+					throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			}
+			
+			// 신규업소 첨부파일 등록
+			if(ActType.equals("N")) {
+				if(upsoMapper.insertNewUpsoAttach(paramsMap) < 1) 
+					throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			}
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		
+	}
+	
+}

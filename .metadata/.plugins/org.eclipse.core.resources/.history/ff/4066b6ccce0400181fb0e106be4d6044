@@ -1,0 +1,242 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+
+
+public class Main {
+
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+
+		
+		visit();
+		
+	}
+	
+
+	
+	public static void plan (){
+		File inFile = new File("C:\\Users\\leeyc\\Documents","catalina_insertUpsoVisitPlan_rev1.txt");
+		File outFile = new File("C:\\Users\\leeyc\\Documents","insertUpsoVisitPlan_CD_DATE_rev1.txt");
+		
+		BufferedReader br = null;
+		BufferedWriter bw = null;
+		
+		Boolean chk = false;
+		
+		double cnt=0;
+		try {
+			//br = new BufferedReader(new FileReader(inFile));
+			br = new BufferedReader(new InputStreamReader(new FileInputStream(inFile),"UTF-8"));
+			bw = new BufferedWriter(new FileWriter(outFile));
+			
+			String line;
+			String strline;
+			String strTab;
+/*			while (cnt<71880185)
+			{
+				cnt++;
+				//System.out.println("line = "+cnt);
+				line = br.readLine();
+				//System.out.println("line = "+line);
+				if(line!=null)
+				{
+			//		System.out.println("not null line = "+line);
+					
+					if(line.contains("insertUpsoVisitPlan ")){
+						chk = true;
+					}else if(line.contains("/* #####################"))
+					{
+						chk = false;
+					}
+					
+					if(chk)
+					{
+						/// when insert input
+						bw.write(line);
+						bw.newLine();
+					}
+				}
+			}*/
+			
+			
+			while ((line = br.readLine())!=null)
+			{
+				cnt++;
+				//System.out.println("line = "+cnt);
+				
+				//System.out.println("line = "+line);
+			//		System.out.println("not null line = "+line);
+					
+				//get date 
+			
+					if(line.contains("(")){
+						//System.out.println("test0 = "+line);
+						strline = line.substring(line.indexOf("(")+1,line.indexOf("'")).trim();
+						strTab = line.substring(line.indexOf("*")+1,line.indexOf("*/")).trim();
+						
+						strline = strline.substring(0,strline.length()-1);
+						
+						bw.write(strline+"\t"+strTab);
+						bw.newLine();
+					}else if(line.contains("'")){
+						strline = line.substring(line.indexOf("'")+1,line.indexOf("/*")).trim();
+						strTab = line.substring(line.indexOf("*")+1,line.indexOf("*/")).trim();
+						
+						strline = strline.substring(0,strline.length()-1);
+						
+						bw.write(strline+"\t"+strTab);
+						bw.newLine();
+					}else if (line.contains(",")&&line.indexOf("/*")>1) {
+						//System.out.println("test = "+line);
+						strline = line.substring(line.indexOf(",")+1,line.indexOf("/*")).trim();
+						strTab = line.substring(line.indexOf("*")+1,line.indexOf("*/")).trim();
+						
+						strline = strline.substring(0,strline.length()-1);
+						
+						bw.write(strline+"\t"+strTab);
+						bw.newLine();
+						
+					}else if(line.contains("2017-")||line.contains("2018-"))
+					{
+							strline = line.substring(0,line.indexOf(" "));
+							line = strline;
+							bw.write(line);
+							bw.newLine();
+							bw.newLine();
+					}
+				}
+			
+			bw.flush();
+			bw.close();
+			
+			
+		}catch(FileNotFoundException e)
+		{
+			e.printStackTrace();
+			System.out.println("fileNot");
+		}catch (IOException e) {
+			e.printStackTrace();
+			System.out.println("IOExe");
+		}finally{
+			if(br!=null)
+				try {
+					br.close();
+					System.out.println("finally close");
+				} catch (Exception e) {
+					System.out.println("finally excep");
+				}
+		}
+
+	}
+	public static void visit (){
+		File inFile = new File("C:\\Users\\leeyc\\Documents","catalina.out");
+		File outFile = new File("C:\\Users\\leeyc\\Documents","test_error.txt");
+		
+		BufferedReader br = null;
+		BufferedWriter bw = null;
+		
+		Boolean chk = false;
+		Boolean Echk = false;
+		
+		
+		double cnt=0;
+		try {
+			//br = new BufferedReader(new FileReader(inFile));
+			br = new BufferedReader(new InputStreamReader(new FileInputStream(inFile),"UTF-8"));
+			bw = new BufferedWriter(new FileWriter(outFile));
+			
+			String line;
+			String strline;
+			String strTab;
+			while (cnt<71880185)
+			{
+				cnt++;
+				//System.out.println("line = "+cnt);
+				line = br.readLine();
+				//System.out.println("line = "+line);
+				if(line!=null)
+				{
+			//		System.out.println("not null line = "+line);
+					
+					if(line.contains("error")){
+						chk = true;
+					}else if(line.contains("/* #####################"))
+					{
+						chk = false;
+					}
+					
+					if(chk)
+					{
+						/// when insert input
+						bw.write(line);
+						bw.newLine();
+					}
+				}
+			}
+			
+			
+			while ((line = br.readLine())!=null)
+			{
+				cnt++;
+				//System.out.println("line = "+cnt);
+				
+				//System.out.println("line = "+line);
+			//		System.out.println("not null line = "+line);
+					
+				//get date 
+			
+				if(line.contains("ERROR: jdbc.sqlonly - SQL"))
+				{
+					Echk = true;
+				}
+				
+					if(line.contains("/* ##################### insertUpsoVisit ##################### */")){
+						//System.out.println("test0 = "+line);
+						chk = true;
+					}else if(line.contains("INFO : jdbc.sqlonly - SQL")&&chk){
+						chk = false;
+						strline = line.substring(0,line.indexOf(" "));
+						line = strline;
+						bw.write(line);
+						bw.newLine();
+					}
+					
+					if(chk || Echk)
+					{
+						/// when insert input
+						bw.write(line);
+						bw.newLine();
+					}
+				}
+			
+			bw.flush();
+			bw.close();
+			
+			
+		}catch(FileNotFoundException e)
+		{
+			e.printStackTrace();
+			System.out.println("fileNot");
+		}catch (IOException e) {
+			e.printStackTrace();
+			System.out.println("IOExe");
+		}finally{
+			if(br!=null)
+				try {
+					br.close();
+					System.out.println("finally close");
+				} catch (Exception e) {
+					System.out.println("finally excep");
+				}
+		}
+
+	}
+
+}

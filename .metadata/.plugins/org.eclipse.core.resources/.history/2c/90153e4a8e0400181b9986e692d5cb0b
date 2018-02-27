@@ -1,0 +1,50 @@
+package com.appg.Komca.common.bean.db;
+
+public class TeamChatUserBean
+{
+	private String	chatRoomCode;
+	private String	emplNo;
+	private String	registDT;
+	private String	inDate;
+
+	public String getInDate()
+	{
+		return inDate;
+	}
+
+	public void setInDate(String inDate)
+	{
+		this.inDate = inDate;
+	}
+
+	public String getChatRoomCode()
+	{
+		return chatRoomCode;
+	}
+
+	public void setChatRoomCode(String chatRoomCode)
+	{
+		this.chatRoomCode = chatRoomCode;
+	}
+
+	public String getEmplNo()
+	{
+		return emplNo;
+	}
+
+	public void setEmplNo(String emplNo)
+	{
+		this.emplNo = emplNo;
+	}
+
+	public String getRegistDT()
+	{
+		return registDT;
+	}
+
+	public void setRegistDT(String registDT)
+	{
+		this.registDT = registDT;
+	}
+
+}

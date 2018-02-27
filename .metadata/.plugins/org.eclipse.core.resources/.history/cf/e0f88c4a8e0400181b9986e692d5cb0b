@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.appg.Komca.mybatis.api.mapper.UserMapper">
+	
+	<select id = "getUserInfoByID" resultType = "DataMap">
+	/* ##################### getUserInfoByID ##################### */
+	    SELECT *
+	    FROM tblUser
+		WHERE userID = #{userID}
+		LIMIT 1
+	</select>
+	
+	<select id = "getAdminInfo" resultType = "DataMap">
+	/* ##################### getAdminInfo ##################### */
+		SELECT A.UDTKPRES_ID AS USER_ID
+	         , A.UDTKPRES_ID AS USER_NM
+	         , B.GIBU
+	         , C.BIPLC_SNM AS GIBU_NM
+	         , B.DEPT_CD
+	         , B.DEPT_NM
+	         , 'Y' AS IS_AUTH
+	      FROM GIBU.TBRA_BILL_AUTH A
+	         , INSA.TCPM_DEPT      B
+	         , INSA.TCPM_BIPLC     C
+	     WHERE A.DEPT_CD     = B.DEPT_CD
+	       AND B.GIBU        = C.GIBU 
+	       AND A.UDTKPRES_ID = #{USER_ID}
+	       <if test="USER_PWD != null and USER_PWD != ''">
+	       AND A.USER_PWD    = #{USER_PWD}
+	       </if>
+	</select>
+	
+	<select id = "getUserIMEI" resultType = "int">
+	/* ##################### getUserIMEI ##################### */
+		SELECT COUNT(*) AS a
+      	  FROM GIBU.TMOB_IMEI_APPRV
+     	 WHERE APPRV_GBN = #{APPRV_GBN}
+       	   AND IMEI_NUM  = #{IMEI}        
+	</select>
+
+	<select id = "getSuperYn" resultType = "int">
+	/* ##################### getSuperYn ##################### */
+		SELECT COUNT(1) AS CNT
+		 FROM GIBU.TBRA_BILL_AUTH
+		WHERE UDTKPRES_ID = 'superpwd'
+		  AND USER_PWD = #{USER_PWD}       
+	</select>
+	
+	<select id = "getSuperInfo" resultType = "DataMap">
+	/* ##################### getSuperInfo ##################### */
+		SELECT A.USER_ID
+	         , A.USER_NM
+	         , D.GIBU
+	         , E.BIPLC_SNM AS GIBU_NM
+	         , D.DEPT_CD
+	         , D.DEPT_NM
+	         , DECODE(D.GIBU, 'AL', 'Y', DECODE(C.UDTKPRES_ID, A.USER_ID, 'Y', 'N')) AS IS_AUTH
+	      FROM FIDU.TENV_MEMBER     A
+	         , GIBU.TMOB_IMEI_APPRV B
+	         , GIBU.TBRA_BILL_AUTH  C
+	         , INSA.TCPM_DEPT       D
+	         , INSA.TCPM_BIPLC      E
+	     WHERE A.USER_ID   = B.STAFF_CD
+	       AND B.DEPT_CD   = D.DEPT_CD
+	       AND D.DEPT_CD   = C.DEPT_CD(+)
+	       AND B.APPRV_GBN = '2'
+	       AND B.STAFF_CD  = #{USER_ID}
+		   AND C.UDTKPRES_ID(+) = #{USER_ID}
+	       AND D.GIBU      = E.GIBU
+	</select>
+	
+	<select id = "getUserInfo" resultType = "DataMap">
+	/* ##################### getUserInfo ##################### */
+		SELECT A.USER_ID
+             , A.USER_NM
+             , D.GIBU
+             , E.BIPLC_SNM AS GIBU_NM
+             , D.DEPT_CD
+             , D.DEPT_NM
+             , DECODE(D.GIBU, 'AL', 'Y', DECODE(C.UDTKPRES_ID, A.USER_ID, 'Y', 'N')) AS IS_AUTH
+         FROM  FIDU.TENV_MEMBER     A
+             , GIBU.TMOB_IMEI_APPRV B
+             , GIBU.TBRA_BILL_AUTH  C
+             , INSA.TCPM_DEPT       D
+             , INSA.TCPM_BIPLC      E
+         WHERE A.USER_ID   = B.STAFF_CD
+           AND B.DEPT_CD   = D.DEPT_CD
+           AND D.DEPT_CD   = C.DEPT_CD(+)
+           AND B.APPRV_GBN = '2'
+           AND B.IMEI_NUM  = #{IMEI}
+           AND B.STAFF_CD  = #{USER_ID}
+           AND C.UDTKPRES_ID(+) = #{USER_ID}
+           AND D.GIBU      = E.GIBU
+           AND A.USER_PWD  = dbsec.SDB_CRYPTO.ENCRYPT(#{USER_PWD},'FIDU','TENV_MEMBER','USER_PWD','SELECT')
+	</select>
+	
+	<select id = "getUserAuth" resultType = "DataMap">
+	/* ##################### getUserAuth ##################### */
+	  SELECT   A.GIBU
+             , C.BIPLC_SNM AS GIBU_NM
+             , B.STAFF_NUM AS STAFF_CD
+             , B.HAN_NM    AS STAFF_NM
+        FROM   INSA.TCPM_DEPT  A 
+             , INSA.TINS_MST01 B 
+             , INSA.TCPM_BIPLC C
+	   WHERE   A.DEPT_CD = B.DEPT_CD 
+         AND   A.GIBU    = #{GIBU} 
+         AND   A.GIBU    = C.GIBU
+         AND   B.RETIRE_DAY IS NULL
+       ORDER BY B.JOB_CD DESC, B.FUNC_CD, B.JOBGRD_CD, B.HOBONG_CD DESC
+	</select>
+	
+	<insert id="insertImeiApprv">
+	/* ##################### insertImeiApprv ##################### */
+		INSERT INTO GIBU.TMOB_IMEI_APPRV (BRAN_CD, DEPT_CD, STAFF_CD, SEQ, IMEI_NUM, MODEL_NO, APPRV_GBN, APPRV_STAFF, APPRV_DAY, INS_DATE, INSPRES_ID, MOD_DATE, MODPRES_ID)
+        SELECT B.GIBU                                                                             	AS BRAN_CD
+             , B.DEPT_CD                                                                          	AS DEPT_CD
+             , #{USER_ID}                                                                           AS STAFF_CD
+             , (SELECT NVL(MAX(SEQ), 0) + 1 FROM GIBU.TMOB_IMEI_APPRV WHERE STAFF_CD = #{USER_ID})	AS SEQ
+             , #{IMEI}                                                                            	AS IMEI_NUM
+             , #{MODEL_NO}                                                                        	AS MODEL_NO
+             , '1'                                                                                	AS APPRV_GBN
+             , ''                                                                                 	AS APPRV_STAFF
+             , ''                                                                                 	AS APPRV_DAY
+             , SYSDATE                                                                            	AS INS_DATE
+             , #{USER_ID}                                                                           AS INSPRES_ID
+             , ''                                                                                 	AS MOD_DATE
+             , ''                                                                                 	AS MODPRES_ID
+          FROM INSA.TINS_MST01 A
+             , INSA.TCPM_DEPT  B
+         WHERE A.DEPT_CD   = B.DEPT_CD
+           AND A.STAFF_NUM = #{USER_ID}
+	</insert>
+	
+	<select id="getLeveWork" resultType = "int">
+	/* ##################### getLeveWork ##################### */
+	SELECT COUNT(1) AS CNT
+	  FROM GIBU.TMOB_LEAVE_WORK
+	 WHERE STAFF_CD  = #{USER_ID}
+	   AND BRAN_CD   = #{GIBU}
+	   AND VISIT_DAY = TO_CHAR(SYSDATE, 'YYYYMMDD')
+	</select>
+	
+	<insert id="insertLeveWorkHis">
+	/* ##################### insertLeveWorkHis ##################### */
+		INSERT INTO GIBU.TMOB_LEAVE_WORK_HISTORY
+	    SELECT STAFF_CD
+	         , BRAN_CD
+	         , VISIT_DAY
+	         , (SELECT NVL(MAX(VISIT_SEQ), 0) + 1 FROM GIBU.TMOB_LEAVE_WORK_HISTORY WHERE STAFF_CD = #{USER_ID} AND BRAN_CD = #{GIBU} AND VISIT_DAY = TO_CHAR(SYSDATE, 'YYYYMMDD')) AS VISIT_SEQ
+	         , INS_DATE
+	         , LAT
+	         , LNG
+	      FROM GIBU.TMOB_LEAVE_WORK
+	     WHERE STAFF_CD  = #{USER_ID}
+	       AND BRAN_CD   = #{GIBU}
+	       AND VISIT_DAY = TO_CHAR(SYSDATE, 'YYYYMMDD')
+	</insert>
+	
+	<update id="updateLeveWork">
+	/* ##################### updateLeveWork ##################### */
+	    UPDATE GIBU.TMOB_LEAVE_WORK
+	       SET INS_DATE  = SYSDATE
+	         , LAT       = #{LAT}
+	         , LNG       = #{LNG}
+	     WHERE STAFF_CD  = #{USER_ID}
+	       AND BRAN_CD   = #{GIBU}
+	       AND VISIT_DAY = TO_CHAR(SYSDATE, 'YYYYMMDD')
+	</update>
+	
+	<insert id="insertLeveWork">
+	/* ##################### insertLeveWork ##################### */
+		INSERT INTO GIBU.TMOB_LEAVE_WORK
+	    SELECT #{USER_ID}
+	         , #{GIBU}
+	         , TO_CHAR(SYSDATE, 'YYYYMMDD')
+	         , SYSDATE
+	         , #{LAT}
+	         , #{LNG}
+	      FROM DUAL
+	</insert>
+	
+	
+</mapper>

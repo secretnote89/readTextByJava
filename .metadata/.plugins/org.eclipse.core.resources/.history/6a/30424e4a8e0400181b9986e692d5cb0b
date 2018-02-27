@@ -1,0 +1,193 @@
+package com.appg.Komca.common.util;
+
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
+
+import com.appg.Komca.common.constants.Constants;
+
+public class JedisUtil
+{
+	private static final boolean	redisCacheUse			= Constants.REDIS_CACHE_USE;
+	private static final String		redisHost			= Constants.REDIS_HOST;
+	private static final int		redisCacheExpiredSec	= Constants.REDIS_EXPIRE_SEC;
+	private static JedisPool		jedisPool				= null;
+
+	public static boolean initalizeJedisPool()
+	{
+
+		System.out.println(":::::::::::::::::::::::::::::::::::::::::::::[REDIS][INIT] START:::::::::::::::::::::::::::::::::::::::::::::");
+
+		if(redisCacheUse)
+		{
+			if(jedisPool == null)
+			{
+				JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
+				jedisPoolConfig.setTestOnBorrow(true);
+				jedisPoolConfig.setTestOnReturn(true);
+				jedisPoolConfig.setMinIdle(64);
+				jedisPoolConfig.setMaxTotal(512);
+
+				jedisPool = new JedisPool(jedisPoolConfig, redisHost);
+
+				System.out.println("::::::::::::::::::[REDIS][INIT] JedisPool CREATE:::::::::::::::::::::::::::::::::::::::::::::");
+			}
+		}
+		else
+			System.out.println("::::::::::::::::::[REDIS][INIT] NOT USE CACHE:::::::::::::::::::::::::::::::::::::::::::::");
+
+		if(jedisPool == null)
+		{
+			System.out.println("::::::::::::::::::[REDIS][INIT] jedisPool IS NOT:::::::::::::::::::::::::::::::::::::::::::::");
+			return false;
+		}
+		
+		System.out.println("::::::::::::::::::[REDIS][INIT] JedisPool OK:::::::::::::::::::::::::::::::::::::::::::::");
+		return true;
+
+	}
+	
+	public static boolean setRedisData(String userKey, Object userData, int expiredSec)
+	{
+		boolean retVal = false ;
+		Jedis jedis = null;
+		
+		try
+		{
+			if(redisCacheUse)
+			{
+				byte[] key = userKey.getBytes();
+				byte[] value = SerialUtil.toByteArray(userData);
+
+				jedis = jedisPool.getResource();
+
+				String result = jedis.set(key, value, "NX".getBytes(), "EX".getBytes(), expiredSec);
+
+				System.out.println("::::::::::::::::::[REDIS][SET] setRedisData key = " + userKey + ":::::::::::::::::::::::::::::::::::::::::::::");
+				System.out.println("::::::::::::::::::[REDIS][SET] setRedisData value = " + userData.toString() + ":::::::::::::::::::::::::::::::::::::::::::::");
+				System.out.println("::::::::::::::::::[REDIS][SET] result = " + result + ":::::::::::::::::::::::::::::::::::::::::::::");
+
+			}
+			else
+				System.out.println("::::::::::::::::::[REDIS][SET] NOT USE CACHE:::::::::::::::::::::::::::::::::::::::::::::");
+
+			retVal = true;
+
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+		finally
+		{
+			if(jedis != null)
+				jedis.close();
+
+		}
+		
+		
+		return retVal ;
+	}
+
+	/**
+	 * 캐시 등록
+	 * 
+	 * @param userKey
+	 * @param userData
+	 * @return
+	 */
+	public static boolean setRedisData(String userKey, Object userData)
+	{
+		return setRedisData(userKey, userData, redisCacheExpiredSec) ;
+	}
+
+	/**
+	 * 캐시에서 가지고 오기
+	 * 
+	 * @param userKey
+	 * @return
+	 */
+	public static Object getRedisData(String userKey)
+	{
+		Object retVal = null;
+		Jedis jedis = null;
+
+		try
+		{
+			if(redisCacheUse)
+			{
+				byte[] key = userKey.getBytes();
+
+				jedis = jedisPool.getResource();
+
+				byte[] value = jedis.get(key);
+
+				System.out.println("::::::::::::::::[REDIS][GET] getRedisData key = " + new String(key) + ":::::::::::::::::");
+
+				if(value != null)
+				{
+					retVal = SerialUtil.toObject(value);
+				}
+			}
+			else
+				System.out.println("::::::::::::::::[REDIS][SET] NOT USE CACHE::::::::::::::::::");
+
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+		finally
+		{
+			if(jedis != null)
+				jedis.close();
+
+		}
+
+		return retVal;
+	}
+
+	/**
+	 * 캐시 데이터 삭제
+	 * 
+	 * @param userKey
+	 * @return
+	 */
+	public static boolean delRedisData(String userKey)
+	{
+		boolean retVal = false;
+		Jedis jedis = null;
+
+		try
+		{
+			if(redisCacheUse)
+			{
+				byte[] key = userKey.getBytes();
+
+				jedis = jedisPool.getResource();
+
+				Long result = jedis.del(key);
+
+				System.out.println("::::::::::::::[REDIS][DEL] delRedisData key = " + new String(key) + ":::::::::::::");
+				System.out.println("::::::::::::::[REDIS][DEL] result = " + result + ":::::::::::::::");
+			}
+			else
+				System.out.println("::::::::::::::[REDIS][DEL] NOT USE CACHE::::::::::::");
+
+			retVal = true;
+
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+		finally
+		{
+			if(jedis != null)
+				jedis.close();
+
+		}
+
+		return retVal;
+	}
+}

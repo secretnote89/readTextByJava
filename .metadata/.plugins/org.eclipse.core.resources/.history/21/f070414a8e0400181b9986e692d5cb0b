@@ -1,0 +1,89 @@
+package com.appg.Komca.common.excel;
+
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+
+public class ExcelReader {
+
+	public List<String> xlsxToString(String filePath) {
+		
+		List<String> list = new ArrayList<String>();
+		
+		FileInputStream inputStream = null;
+		XSSFWorkbook workbook = null;		
+		XSSFRow row;
+		XSSFCell cell;
+		
+		try{
+			
+			inputStream = new FileInputStream(filePath);
+			workbook = new XSSFWorkbook(inputStream);
+			
+			System.out.println(workbook.getSheetName(0) + " sheet 데이터 취득 시작");
+			
+			//sheet 정보 취득
+			XSSFSheet sheet = workbook.getSheetAt(0);
+			
+			//취득된 sheet에서 rows수 취득
+			int rows = sheet.getPhysicalNumberOfRows();
+			System.out.println(workbook.getSheetName(0) + " sheet의 row수 : " + rows);
+			
+			for (int r = 0; r < rows; r++) {
+				row = sheet.getRow(r); // row 가져오기
+				if (row != null) {
+					cell = row.getCell(0);
+					if (cell != null) {
+						String value = null;
+						
+						switch (cell.getCellType()) {
+						case XSSFCell.CELL_TYPE_FORMULA:
+							value = cell.getCellFormula();
+							break;
+						case XSSFCell.CELL_TYPE_NUMERIC:
+							value = "" + cell.getNumericCellValue();
+							break;
+						case XSSFCell.CELL_TYPE_STRING:
+							value = "" + cell.getStringCellValue();
+							break;
+						case XSSFCell.CELL_TYPE_BLANK:
+							value = "[null 아닌 공백]";
+							break;
+						case XSSFCell.CELL_TYPE_ERROR:
+							value = "" + cell.getErrorCellValue();
+							break;
+						default:
+						}
+						
+						list.add(value);
+					}
+				}//row 길이만큼
+			} // for(r) 문
+			
+			
+		} catch(FileNotFoundException e) {
+			e.printStackTrace();
+		} catch(IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				// 사용한 자원은 finally에서 해제
+				if( workbook!= null) workbook.close();
+				if( inputStream!= null) inputStream.close();
+				
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		return list;
+	}
+} 

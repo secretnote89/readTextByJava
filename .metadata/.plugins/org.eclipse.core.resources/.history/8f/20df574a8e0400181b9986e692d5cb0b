@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.appg.Komca.mybatis.api.mapper.CommMapper">
+	
+	<insert id="insertSMS">
+	/* ##################### insertSMS ##################### */
+		<if test='sendType.equals("0")'>
+		/* DESC : msg 용량이(byte) 80을 초과 할 경우 */  
+		
+        	INSERT INTO KOMSMS.SDK_MMS_SEND (MSG_ID, USER_ID, SCHEDULE_TYPE, SUBJECT, NOW_DATE, SEND_DATE, CALLBACK, DEST_COUNT, DEST_INFO, MSG_TYPE, MMS_MSG, CONTENT_COUNT, CONTENT_DATA, RESERVED1, RESERVED2, RESERVED3, RESERVED4, RESERVED5, RESERVED6)
+	        SELECT KOMSMS.SDK_MMS_SEQ.NEXTVAL /* MSG_ID */
+	             , #{UPSO_CD} /* USER_ID */
+	             , '0' /* SCHEDULE_TYPE(즉시:0 예약:1) */
+	             , '(사)한국음악저작권협회' /* SUBJECT */
+	             , TO_CHAR(SYSDATE,'YYYYMMDDHH24MI') /* NOW_DATE */
+	             , TO_CHAR(SYSDATE,'YYYYMMDDHH24MI') /* SEND_DATE(즉시인경우 널 예약인경우 'YYYYMMDDHH24MISS') */
+	             , (SELECT REGEXP_REPLACE(REGEXP_REPLACE(PHON_NUM, '[^0-9]', ''), '[[:space:]]{1,}', '') FROM INSA.TCPM_BIPLC WHERE GIBU = #{GIBU}) /* CALLBACK */
+	             , '1' /* DEST_COUNT */
+	             , #{MNGEMSTR_NM} || '^' || REPLACE(#{MNGEMSTR_HPNUM}, '-', '') /* DEST_INFO */
+	             , '0' /* MSG_TYPE */
+	             , #{MSG} /* MMS_MSG */
+	             , 0 /* CONTENT_COUNT */
+	             , '' /* CONTENT_DATA */
+	             , #{USER_ID} /* RESERVED1 */
+	             , 'U' || #{UPSO_CD} /* RESERVED2 */
+	             , LENGTHB(#{MSG}) /* RESERVED3 */
+	             , SUBSTRB(#{UPSO_NM}, 1, 50) /* RESERVED4 */
+	             , #{GIBU} /* RESERVED5 */
+	             , '' /* RESERVED6 */
+	          FROM DUAL
+		</if>
+		<if test='sendType.equals("1")'>
+		/* DESC : msg 용량이(byte) 80을 초과 하지 않을 경우  */
+		
+        	INSERT INTO KOMSMS.SDK_SMS_SEND (MSG_ID, USER_ID, SCHEDULE_TYPE, SUBJECT, SMS_MSG, CALLBACK_URL, NOW_DATE, SEND_DATE, CALLBACK, DEST_TYPE, DEST_COUNT, DEST_INFO, RESERVED1, RESERVED2, RESERVED3, RESERVED4, RESERVED5, RESERVED6)
+	        SELECT KOMSMS.SDK_SMS_SEQ.NEXTVAL /* MSG_ID */
+	             , #{UPSO_CD} /* USER_ID */
+	             , '0' /* SCHEDULE_TYPE(즉시:0 예약:1) */
+	             , '(사)한국음악저작권협회' /* SUBJECT */
+	             , #{MSG} /* SMS_MSG */
+	             , '' /* CALLBACK_URL */
+	             , TO_CHAR(SYSDATE,'YYYYMMDDHH24MI') /* NOW_DATE */
+	             , TO_CHAR(SYSDATE,'YYYYMMDDHH24MI') /* SEND_DATE(즉시인경우 널 예약인경우 'YYYYMMDDHH24MISS') */
+	             , (SELECT REGEXP_REPLACE(REGEXP_REPLACE(PHON_NUM, '[^0-9]', ''), '[[:space:]]{1,}', '') FROM INSA.TCPM_BIPLC WHERE GIBU = #{GIBU}) /* CALLBACK */
+	             , '0' /* DEST_TYPE */
+	             , '1' /* DEST_COUNT */
+	             , #{MNGEMSTR_NM} || '^' || REPLACE(#{MNGEMSTR_HPNUM}, '-', '') /* DEST_INFO */
+	             , #{USER_ID} /* RESERVED1 */
+	             , 'U' /* RESERVED2 */
+	             , LENGTHB(#{MSG}) /* RESERVED3 */
+	             , SUBSTRB(#{UPSO_NM}, 1, 50) /* RESERVED4 */
+	             , #{GIBU} /* RESERVED5 */
+	             , '' /* RESERVED6 */
+	          FROM DUAL
+		</if>
+	</insert>
+	
+	<select id = "getMyContentList" resultType = "DataMap">
+	/* ##################### getMyContentList ##################### */
+      	SELECT CONTENT
+      		  ,SEQ
+		  FROM GIBU.TMOB_CONTENT_LIST
+		 WHERE STAFF_CD = #{USER_ID}
+		   AND BRAN_CD  = #{GIBU}
+		   AND GBN      = #{CONTENT_TYPE}
+	</select>
+	
+	<select id = "getCodeList" resultType = "DataMap">
+	
+	/* ##################### getCodeList ##################### */
+	
+      	SELECT CODE_CD
+		     , CODE_NM
+		  FROM FIDU.TENV_CODE
+		 WHERE HIGH_CD  = #{HIGH_CD}
+		   AND CODE_ETC = #{CODE_TYPE}
+		 ORDER BY SORT_CD		   
+	</select>
+	
+	<select id = "getSiDoList" resultType = "DataMap">
+	/* ##################### getSiDoList ##################### */
+	  SELECT CODE_NM AS ATTE
+	    FROM FIDU.TENV_CODE
+	   WHERE HIGH_CD = #{HIGH_CD}
+	ORDER BY CODE_NM
+	</select>
+	
+	<select id = "getSiGunGuList" resultType = "DataMap">
+	/* ##################### getSiGunGuList ##################### */
+	  SELECT DISTINCT (CASE WHEN SUBSTR(JUSO_CD,1,5) = '36110' THEN TOWNTWSHP ELSE CITYCNTYDSRC END) AS CITYCNTYDSRC
+       	   , SUBSTR(JUSO_CD,1,5) AS MNG_ZIP
+	    FROM FIDU.TENV_POST
+	   WHERE ATTE = #{ATTE}
+	  ORDER BY 1
+	</select>
+	
+	<select id = "getDoroList" resultType = "DataMap">
+	/* ##################### getDoroList ##################### */
+		SELECT ATTE || ' ' || (CASE WHEN #{MNG_ZIP} = '36110' THEN TOWNTWSHP ELSE CITYCNTYDSRC END) || ' ' || JUSO_NM || ' ' || DECODE(BD_NO2, 0, BD_NO || '', BD_NO || '-' || BD_NO2) AS UPSO_NEW_ADDR1
+		     , ZIP AS UPSO_NEW_ZIP
+		     , BD_MNG_NUM
+		  FROM FIDU.TENV_POST
+		 WHERE ATTE = #{ATTE}
+		   AND (CITYCNTYDSRC = #{CITYCNTYDSRC} OR TOWNTWSHP = #{CITYCNTYDSRC})
+		   AND JUSO_NM || DECODE(BD_NO2, 0, BD_NO || '', BD_NO || '-' || BD_NO2) LIKE REPLACE('%' || #{JUSO_NM} || '%', ' ', '')
+	</select>
+	
+	<select id = "getGradNmList1" resultType = "DataMap">
+	/* ##################### getGradNmList1 ##################### */
+	  SELECT GRAD_GBN /* 업종분류코드 */
+	       , GRADNM /* 업종분류명 */
+	    FROM GIBU.TBRA_BSTYPGRAD
+	   WHERE BSTYP_CD = 'z'
+	     AND GRAD_GBN IN (SELECT DISTINCT BSTYP_CD FROM GIBU.TBRA_BSTYPGRAD)
+	   ORDER BY GRAD_GBN
+	</select>
+	
+	<select id = "getGradNmList2" resultType = "DataMap">
+	/* ##################### getGradNmList2 ##################### */
+	  SELECT BSTYP_CD  /* 업종분류코드 */
+	       , GRAD_GBN /* 업종코드 */
+	       , GRADNM  /* 업종명 */
+	       , STNDAMT /* 월정료 */
+	    FROM GIBU.TBRA_BSTYPGRAD
+	   WHERE BSTYP_CD = #{GRAD_GBN}
+	   ORDER BY GRAD_GBN
+	</select>
+	
+	<select id = "getPerformCodeList" resultType = "DataMap">
+	/* ##################### getPerformCodeList ##################### */
+		<if test='CODE_TYPE.equals("0")'>
+		    SELECT SCLASS_CD
+			     , SCLASS_CD_NM
+			  FROM FIDU.TENV_SCLASSCD
+			 WHERE AVECLASS_CD = 'DA'
+			   AND USE_YN      = 'Y'
+		</if>
+		<if test='CODE_TYPE.equals("1")'>
+		    SELECT MDM_CD
+			     , MDM_CD_NM
+			  FROM FIDU.TENV_MDMCD
+			 WHERE SCLASS_CD = #{SCLASS_CD}
+		</if>
+		   
+	</select>
+	
+	<select id = "getAreaCodeList" resultType = "DataMap">
+	/* ##################### getAreaCodeList ##################### */
+	    SELECT CODE_CD
+		     , CODE_NM
+		  FROM FIDU.TENV_CODE
+		 WHERE HIGH_CD = '00414'
+		   AND USE_YN = 'Y'
+		 ORDER BY SORT_CD
+	</select>
+	
+	<select id = "getBsconCodeList" resultType = "DataMap">
+	/* ##################### getBsconCodeList ##################### */
+	    SELECT BSCON_CD
+		     , BSCONHAN_NM AS BSCON_NM
+		  FROM FIDU.TLEV_BSCON
+		 WHERE 1=1
+		 <if test="BSCON_NM != null and BSCON_NM != ''">
+		 AND   BSCONHAN_NM LIKE '%' || #{BSCON_NM} || '%'
+		 </if>
+	</select>
+	
+	<select id="getReportArrear" resultType="DataMap">
+		SELECT ROWNUM /* No */
+		     , SIGUNGU /* 지역 */
+		     , FIDU.GET_STAFF_NM(#{USER_ID}) AS STAFF_NM /* 담당 */
+		     , UPSO_CNT /* 연체업소 */
+		     , TOT_CNT /* 전체업소 */
+		     , RATE /* 연체율 */
+		FROM (
+		        SELECT SUM(TOT_USE_AMT) AS TOT_USE_AMT
+		             , SUM(TOT_ADDT_AMT) AS TOT_ADDT_AMT
+		             , SUM(TOT_AMT) AS TOT_AMT
+		             , COUNT(1) AS TOT_CNT
+		             , SUM(UPSO_CNT) AS UPSO_CNT
+		             , TRUNC(SUM(UPSO_CNT) / COUNT(1) * 100, 1) AS RATE
+		             , SIGUNGU
+		          FROM (
+		                SELECT XA.TOT_USE_AMT AS TOT_USE_AMT
+		                     , XA.TOT_ADDT_AMT AS  TOT_ADDT_AMT
+		                     , XA.TOT_USE_AMT + XA.TOT_ADDT_AMT AS TOT_AMT
+		                     , (SELECT ATTE||' '||CITYCNTYDSRC FROM FIDU.TENV_POST WHERE BD_MNG_NUM =XB.UPSO_BD_MNG_NUM) AS SIGUNGU
+		                     , XA.DEMD_MMCNT
+		                     , (CASE WHEN DEMD_MMCNT <![CDATA[ >= ]]> TO_NUMBER(#{CNT}) AND TO_NUMBER(#{CNT}) = 3
+		                             THEN 1
+		                             WHEN DEMD_MMCNT <![CDATA[ >= ]]> TO_NUMBER(#{CNT}) AND TO_NUMBER(#{CNT}) = 6 AND (SELECT COUNT(ACCU_DAY) FROM GIBU.TBRA_ACCU WHERE UPSO_CD = XA.UPSO_CD AND COMPN_DAY IS NULL) <![CDATA[ < ]]> 1
+		                             THEN 1
+		                             ELSE 0
+		                         END) AS UPSO_CNT
+		                /*      , (SELECT DECODE(COURT_NM, NULL, TOWNTWSHP, COURT_NM) FROM FIDU.TENV_POST WHERE BD_MNG_NUM = XB.UPSO_BD_MNG_NUM ) AS DONG */
+		                  FROM GIBU.TMOB_UPSO_LIST XA
+		                     , GIBU.TBRA_UPSO      XB
+		                 WHERE XA.UPSO_CD = XB.UPSO_CD
+		                   AND XA.BRAN_CD = DECODE(#{GIBU}, 'AL', XA.BRAN_CD, #{GIBU})
+		                   AND XA.STAFF_CD = NVL(#{USER_ID}, XA.STAFF_CD)
+		           )
+		         GROUP BY SIGUNGU
+		         ORDER BY RATE DESC)
+	
+	</select>
+	
+	<select id="getReportCollect" resultType="DataMap">
+		SELECT GUGUN				/* 지역 */
+		    ,  STAFF_NM				/* 담당 */
+		    ,  SUM(AMT) MON_AMT		/* 월정료총액 */
+		    ,  COUNT(1) UPSO_CNT	
+		    ,  SUM(USE_AMT) COL_AMT	/* 징수금액 */
+		    ,  SUM(DECODE(GBN, 'COL_UPSO',1,0)) COL_UPSO_CNT	
+		    ,  TRUNC(SUM(USE_AMT) / DECODE(SUM(AMT), 0, 1, SUM(AMT)) * 100, 1) AS RATE	/* 징수율 */
+		FROM (
+		        SELECT  A.BRAN_CD
+		            ,   A.UPSO_CD
+		            ,   MAX(TC.MONPRNCFEE) AMT
+		            ,   SUM(NVL(B.REPT_AMT,0)-NVL(B.COMIS,0)) USE_AMT
+		            ,   MAX(C.STAFF_NUM) STAFF_CD
+		            ,   MAX(C.HAN_NM) STAFF_NM
+		            ,   MAX((SELECT ATTE || ' ' || CITYCNTYDSRC FROM FIDU.TENV_POST WHERE BD_MNG_NUM = A.UPSO_BD_MNG_NUM)) GUGUN
+		            ,   DECODE(SUM(NVL(B.REPT_AMT,0)-NVL(B.COMIS,0)), 0, 'UPSO', 'COL_UPSO') GBN
+		        FROM    GIBU.TBRA_UPSO A
+		            ,   (
+		                    SELECT  REPT_AMT
+		                        ,   COMIS
+		                        ,   UPSO_CD
+		                    FROM    GIBU.TBRA_REPT
+		                    WHERE   MAPPING_DAY LIKE #{DEMD_YRMN}||'%'
+		                    AND     DISTR_GBN IS NULL
+		                    AND     BRAN_CD = DECODE(#{GIBU}, 'AL', BRAN_CD, #{GIBU})
+		                    UNION ALL
+		                    SELECT  DISTR_AMT
+		                        ,   0 COMIS
+		                        ,   UPSO_CD
+		                    FROM    GIBU.TBRA_REPT_UPSO_DISTR
+		                    WHERE   MAPPING_DAY LIKE #{DEMD_YRMN}||'%'
+		                    AND     BRAN_CD = DECODE(#{GIBU}, 'AL', BRAN_CD, #{GIBU})
+		                ) B
+		            ,   INSA.TINS_MST01 C
+		            ,   (
+		                    SELECT ZA.UPSO_CD, ZB.MONPRNCFEE, ZC.GRADNM, TRIM(ZB.BSTYP_CD) BSTYP_CD, ZB.UPSO_GRAD
+		                    FROM(
+		                            SELECT  A.UPSO_CD, MAX(A.JOIN_SEQ) JOIN_SEQ
+		                            FROM    GIBU.TBRA_UPSORTAL_INFO A
+		                                ,   GIBU.TBRA_UPSO B
+		                            WHERE   B.BRAN_CD = DECODE(#{GIBU}, 'AL', BRAN_CD, #{GIBU})
+		                            AND     A.UPSO_CD = B.UPSO_CD
+		                            AND     B.STAFF_CD = NVL(#{USER_ID}, B.STAFF_CD)
+		                            <![CDATA[
+		                            AND     A.APPL_DAY <= #{DEMD_YRMN} || '31' ]]>
+		                            GROUP BY A.UPSO_CD
+		                    ) ZA
+		                    , GIBU.TBRA_UPSORTAL_INFO ZB
+		                    , GIBU.TBRA_BSTYPGRAD ZC
+		                    WHERE   ZB.JOIN_SEQ = ZA.JOIN_SEQ
+		                    AND     ZB.UPSO_CD = ZA.UPSO_CD
+		                    AND     ZC.BSTYP_CD = ZB.BSTYP_CD
+		                    AND     ZC.GRAD_GBN = ZB.UPSO_GRAD
+		                ) TC
+		        WHERE   A.BRAN_CD = DECODE(#{GIBU}, 'AL', BRAN_CD, #{GIBU})
+		        <![CDATA[
+		        AND     (A.NEW_DAY IS NULL OR A.NEW_DAY <= #{DEMD_YRMN} ||'31') ]]>
+		        AND     B.UPSO_CD(+) = A.UPSO_CD
+		        AND     C.STAFF_NUM(+) = A.STAFF_CD
+		        AND     A.STAFF_CD = NVL(#{USER_ID}, A.STAFF_CD)
+		        AND     A.UPSO_CD = TC.UPSO_CD
+		        <![CDATA[
+		        AND     (A.CLSBS_YRMN IS NULL OR NVL(SUBSTR(A.CLSBS_INS_DAY,1,6), ' ') > #{DEMD_YRMN}) ]]>
+		        GROUP BY A.BRAN_CD, A.UPSO_CD
+		    )
+		GROUP BY GUGUN, STAFF_NM
+		ORDER BY RATE DESC, STAFF_NM, GUGUN
+	
+	</select>
+	
+	<select id="getReportGoso" resultType="DataMap">
+		SELECT ROWNUM /* No */
+		     , SIGUNGU /* 지역 */
+		     , FIDU.GET_STAFF_NM(STAFF_CD) AS STAFF_NM /* 담당 */
+		     , ACCU_CNT /* 고소업소 */
+		     , NONPY_CNT /* 연체업소 */
+		     , RATE /* 고소율 */
+		  FROM (
+		    SELECT SIGUNGU
+		         , STAFF_CD
+		         , COUNT(1) AS NONPY_CNT
+		         , SUM(DECODE(ACCU_NUM, '', 0, 1)) AS ACCU_CNT
+		         , TRUNC(SUM(DECODE(ACCU_NUM, '', 0, 1)) / COUNT(1) * 100, 1) AS RATE
+		      FROM (
+		            SELECT XA.UPSO_CD
+		                 , DEMD_MMCNT
+		                 , (SELECT ATTE || ' ' || CITYCNTYDSRC FROM FIDU.TENV_POST WHERE BD_MNG_NUM = XB.UPSO_BD_MNG_NUM) AS SIGUNGU
+		                 , XC.ACCU_NUM
+		                 , XB.STAFF_CD
+		              FROM GIBU.TMOB_UPSO_LIST XA
+		                 , GIBU.TBRA_UPSO      XB
+		                 , (SELECT MAX(ACCU_NUM) AS ACCU_NUM, UPSO_CD FROM GIBU.TBRA_ACCU WHERE COMPN_DAY IS NULL GROUP BY UPSO_CD) XC
+		             WHERE XB.UPSO_CD  = XA.UPSO_CD
+		               AND XA.UPSO_CD  = XC.UPSO_CD(+)
+		               AND XA.BRAN_CD = DECODE(#{GIBU}, 'AL', XA.BRAN_CD, #{GIBU})
+		               AND XA.STAFF_CD = NVL(#{USER_ID}, XA.STAFF_CD)
+		               AND TO_NUMBER(XA.DEMD_MMCNT) BETWEEN 8 AND 999
+		           )
+		     GROUP BY SIGUNGU, STAFF_CD
+		     ORDER BY RATE DESC)
+	
+	</select>
+	
+	<insert id="insertMyContent">
+	/* ##################### insertMyContent ##################### */
+	INSERT INTO GIBU.TMOB_CONTENT_LIST
+	SELECT #{USER_ID}
+	     , #{GIBU}
+	     , (SELECT NVL(MAX(SEQ), 0) + 1 FROM GIBU.TMOB_CONTENT_LIST WHERE STAFF_CD = #{USER_ID} AND GBN = #{GBN})
+	     , #{GBN}
+	     , #{CONTENT}
+	     , SYSDATE
+	     , ''
+	  FROM DUAL
+	</insert>
+	
+	<update id="updateMyContent">
+	/* ##################### updateMyContent ##################### */
+	UPDATE GIBU.TMOB_CONTENT_LIST
+	   SET CONTENT 	= #{CONTENT}
+	 WHERE STAFF_CD = #{USER_ID}
+	   AND GBN      = #{GBN}
+	   AND SEQ      = #{SEQ}
+	</update>
+	
+	<delete id="deleteMyContent">
+	/* ##################### deleteMyContent ##################### */
+	DELETE GIBU.TMOB_CONTENT_LIST
+	 WHERE STAFF_CD = #{USER_ID}
+	   AND GBN      = #{GBN}
+	   AND SEQ      = #{SEQ}
+	</delete>
+	
+	<delete id="deletePushKey">
+	/* ##################### deletePushKey ##################### */
+	DELETE GIBU.TMOB_GCM_PUSHKEY 
+	 WHERE USER_ID = #{USER_ID}
+	</delete>
+	
+	<insert id="insertPushKey">
+	/* ##################### insertPushKey ##################### */
+	 INSERT INTO GIBU.TMOB_GCM_PUSHKEY
+     VALUES (#{USER_ID}, #{IMEI}, #{PUSH_KEY}, SYSDATE)
+	</insert>
+	
+	<select id = "getPushKey" resultType = "String">
+	/* ##################### getPushKey ##################### */
+	    SELECT B.PUSH_KEY
+		FROM TMOB_IMEI_APPRV A
+		JOIN GIBU.TMOB_GCM_PUSHKEY B
+		ON A.STAFF_CD = B.USER_ID
+		WHERE A.APPRV_GBN = '2'
+		GROUP BY STAFF_CD, B.PUSH_KEY
+	</select>	
+	
+	<select id = "getTransactionTime" resultType = "Int">
+	/* ##################### getTransactionTime ##################### */
+	    SELECT COUNT(*) AS CNT 
+        FROM   DUAL 
+        WHERE  TO_CHAR(SYSDATE, 'HH24MISS') BETWEEN '090000' AND '221459'
+	</select>	
+	
+</mapper>

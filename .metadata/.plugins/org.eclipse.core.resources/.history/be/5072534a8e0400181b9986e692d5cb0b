@@ -1,0 +1,32 @@
+package com.appg.Komca.mybatis;
+
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.web.context.support.XmlWebApplicationContext;
+
+public class DBSessionManager
+{
+	private SqlSessionFactory	sessionFactory	= null;
+
+	public DBSessionManager()
+	{
+		ApplicationContext context = new XmlWebApplicationContext();
+		sessionFactory = (SqlSessionFactory) context.getBean("sqlSessionFactory");
+	}
+
+	public void closeSession(SqlSession session)
+	{
+		if(session != null)
+		{
+			session.close();
+		}
+	}
+
+	public SqlSession openSession()
+	{
+		SqlSession session = sessionFactory.openSession();
+		return session;
+	}
+
+}

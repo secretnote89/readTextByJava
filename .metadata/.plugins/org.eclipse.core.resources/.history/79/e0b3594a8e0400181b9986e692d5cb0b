@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.appg.Komca.mybatis.api.mapperPol.PolytideMapper">
+    <select id = "getBdTerms" resultType = "DataMap">
+        SELECT * FROM bd_terms
+    </select>
+    
+    <select id = "getBdTermRelationShip" resultType = "DataMap">
+        SELECT * FROM bd_term_relationships
+        LIMIT 0, 999999
+    </select>
+    
+    <select id = "getBdPosts" resultType = "DataMap">
+		SELECT 
+			ID
+			, post_title
+			, post_type
+		FROM bd_posts
+		WHERE post_type = 'store'
+		LIMIT 0, 999999
+    </select>
+    
+    <select id = "getBdPostMeta" resultType = "DataMap">
+        SELECT * FROM bd_postmeta
+        LIMIT 0, 999999
+    </select>
+    
+    <select id = "getBrandInfo" resultType = "DataMap">
+        SELECT * FROM bd_terms
+        WHERE `name` LIKE '%찜하다0410%'
+    </select>
+    
+    <select id = "getBdPostMetaConfirm" resultType = "DataMap">
+        SELECT * FROM bd_postmeta
+        LIMIT 0, 500
+    </select>
+</mapper>

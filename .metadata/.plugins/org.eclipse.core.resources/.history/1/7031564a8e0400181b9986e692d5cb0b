@@ -1,0 +1,145 @@
+package com.appg.Komca.mybatis.api.mapper;
+
+import java.util.List;
+
+import org.apache.ibatis.annotations.Param;
+import org.springframework.stereotype.Repository;
+
+import com.appg.Komca.common.bean.DataMap;
+
+@Repository
+public interface UserMapper
+{
+
+	/**
+	 * 사원 정보 조회
+	 * 
+	 * @param emplNo
+	 * @return
+	 */
+	public DataMap getUserInfo(@Param("userNumber") int userNumber);
+
+	/**
+	 * 디바이스 정보 저장
+	 * 
+	 * @param params
+	 * @return
+	 */
+	public int saveUserBasicInfo(DataMap params);
+	public int modifyUser(DataMap params);
+	/**
+	 * 중복 푸시키 제거
+	 * @param params
+	 */
+	public void removeDuplPushInfo(String registrationKey);
+	
+	/**
+	 * 아이디 패스워드로 유저정보가져오기
+	 * @param params
+	 * @return
+	 */
+	public DataMap getUserInfoByID(DataMap params);
+
+	public int modifyUserPwd(@Param("userPwd") String userPwd, @Param("userID") String userID);
+	
+	/**
+	 * 권한정보 조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getUserAuth(DataMap params);
+	
+	
+	/**
+	 * 관리자 정보 조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getAdminInfo(DataMap params);
+	
+	/**
+	 * 슈퍼패스워드 유저 여부
+	 * @param params
+	 * @return
+	 */
+	public int getSuperYn(DataMap params);
+	
+	
+	/**
+	 * 슈퍼패스워드 유저 정보
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getSuperInfo(DataMap params);
+	
+	
+	/**
+	 * IMEI 조회
+	 * @param params
+	 * @return
+	 */
+	public int getUserIMEI(DataMap params);
+	
+	public int getUserIMEI2(DataMap params);
+	
+	/**
+	 * 일반 사용자 정보 조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getUserInfo(DataMap params);
+	
+	/**
+	 * 일반 사용자 로그인
+	 * @param params
+	 * @return
+	 */
+	public DataMap getUserLogin(DataMap params);
+	
+	/**
+	 * IMEI 승인요청
+	 * @param params
+	 * @return
+	 */
+	public int insertImeiApprv(DataMap params);
+	
+	/**
+	 * 퇴근 정보 테이블 조회
+	 * @param params
+	 * @return
+	 */
+	public int getLeveWork(DataMap params);
+	
+	/**
+	 * 퇴근 history 테이블 insert
+	 * @param params
+	 * @return
+	 */
+	public int insertLeveWorkHis(DataMap params);
+	
+	/**
+	 * 퇴근 정보 테이블 update
+	 * @param params
+	 * @return
+	 */
+	public int updateLeveWork(DataMap params);
+	
+	/**
+	 * 퇴근 정보 테이블 insert
+	 * @param params
+	 * @return
+	 */
+	public int insertLeveWork(DataMap params);
+
+	/**
+	 * test
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getUserIMEI233(DataMap params);
+	
+	
+	
+	
+	
+}

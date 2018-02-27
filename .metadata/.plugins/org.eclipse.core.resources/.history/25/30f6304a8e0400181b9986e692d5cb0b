@@ -1,0 +1,43 @@
+package com.appg.Komca.common.batch.job;
+
+import javapns.devices.exceptions.InvalidDeviceTokenFormatException;
+import javapns.devices.implementations.basic.BasicDevice;
+
+import com.appg.Komca.common.batch.manager.IBatchExecute;
+import com.appg.Komca.common.bean.DataMap;
+import com.appg.Komca.common.push.APNSSender;
+import com.appg.Komca.common.push.DataBean;
+
+public class Job_ApnsSendPush implements IBatchExecute
+{
+
+	@Override
+	public Object execute(Object jobDataObj)
+	{
+		try
+		{
+			APNSSender AS = new APNSSender();
+			DataMap jobData = (DataMap) jobDataObj;
+			DataBean pushData = (DataBean) jobData.get("pushData");
+			String registrationKey = jobData.getString("registrationKey").replaceAll(" ", "").replaceAll(">", "").replace("<", "");
+			AS.sendPush(new BasicDevice(registrationKey), pushData);
+		}
+		catch (InvalidDeviceTokenFormatException e)
+		{
+			e.printStackTrace();
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	@Override
+	public Object postExecute(Object result)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+}

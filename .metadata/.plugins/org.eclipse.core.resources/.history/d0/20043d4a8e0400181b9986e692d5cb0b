@@ -1,0 +1,57 @@
+package com.appg.Komca.common.bean.db;
+
+/**
+ * tblChatVoteUser
+ * 
+ * @author inyeong
+ *
+ */
+public class ChatVoteUserBean
+{
+
+	private int		voteNumber;
+	private String	emplNo;
+	private int		isVote;
+	private String	voteDT;
+
+	public int getVoteNumber()
+	{
+		return voteNumber;
+	}
+
+	public void setVoteNumber(int voteNumber)
+	{
+		this.voteNumber = voteNumber;
+	}
+
+	public String getEmplNo()
+	{
+		return emplNo;
+	}
+
+	public void setEmplNo(String emplNo)
+	{
+		this.emplNo = emplNo;
+	}
+
+	public int getIsVote()
+	{
+		return isVote;
+	}
+
+	public void setIsVote(int isVote)
+	{
+		this.isVote = isVote;
+	}
+
+	public String getVoteDT()
+	{
+		return voteDT;
+	}
+
+	public void setVoteDT(String voteDT)
+	{
+		this.voteDT = voteDT;
+	}
+
+}

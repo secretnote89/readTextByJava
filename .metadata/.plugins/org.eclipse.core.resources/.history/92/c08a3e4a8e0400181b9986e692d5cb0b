@@ -1,0 +1,86 @@
+package com.appg.Komca.common.constants;
+
+/**
+ * 운영
+ * @author Administrator
+ *
+ */
+public class Constants
+{
+
+	public static final boolean	IS_DEBUG				= true;
+	public static final boolean	IS_MONITORING			= true;
+	public static final boolean	IS_SERVER_REAL			= true;
+	
+	
+	public static final boolean 	REDIS_CACHE_USE 			= true;
+	//public static final String	REDIS_HOST					= "182.161.118.71"; redis 외부 ip
+	public static final String	REDIS_HOST					= "192.168.0.13"; //redis 내부 ip
+	
+	// public static final int		REDIS_EXPIRE_SEC			= 60 * 60 * 24;
+	public static final int		REDIS_EXPIRE_SEC			= 60 * 30;
+	public static final String	REDIS_KEY_COUPON_LIST			= "KEY_LIST" ;
+	public static final String	REDIS_KEY_COUPON_COUNT		= "KEY_COUNT" ;
+	public static final String	REDIS_KEY_COUPON_INFO			= "KEY_INFO" ;
+	public static final String	REDIS_KEY_COUPON_USE			= "KEY_USE" ;
+	public static final String	REDIS_KEY_USE_AVAIL			= "KEY_USE_AVAIL" ;
+	
+
+	//public static final String	PROJECT_PATH			= "/home/Komca";
+	
+	// 테스트 서버
+	/*public static final String	PROJECT_PATH			= "D:/project/komcaProject/workspace/Komca";
+	public static final String	READ_FILE_PATH_BASE		= "/resources/uploadFile";
+	public static final String	UPLOAD_FILE_PATH_BASE	= PROJECT_PATH + "/resources/uploadFile";*/
+	
+	// 운영서버
+	public static final String	PROJECT_PATH			= "/usr/share/tomcat7/webapps/Komca";
+	public static final String	READ_FILE_PATH_BASE		= "/resources/uploadFile";
+	public static final String	UPLOAD_FILE_PATH_BASE	= PROJECT_PATH + "/resources/uploadFile";
+	
+	
+	// 공통
+	public static final String	UPLOAD_FILE_PATH_ORGIN	= UPLOAD_FILE_PATH_BASE + "/origin";
+	public static final String	UPLOAD_FILE_PATH_720	= UPLOAD_FILE_PATH_BASE + "/720";
+	public static final String	UPLOAD_FILE_PATH_240	= UPLOAD_FILE_PATH_BASE + "/240";
+	
+	public static final String	LOG_PATH_BASE			= PROJECT_PATH + "/log";
+
+	public static final int		ROWPER_PAGE				= 20;
+	public static final int		BLOCK_SIZE				= 10;
+
+	// GCM 셋팅
+	//public static final String	GCM_GOOGLE_SERVER_KEY	= "AIzaSyDzOR1PcP3Sa5YdHfHifro3Q8SXZLmGyv4";
+	public static final String	GCM_GOOGLE_SERVER_KEY	= "AAAAwZ8u1gw:APA91bFm0GWAwW0lfemZtqbf460r4jTHPCfvCytQvWVbYC5R_aEn1kzQCi5ffriTYG6_NIUedmdEBJcSOAT7r6wOxGAqkZPfk8_yk3sTOeOeFp_o6rvnEjDhVZ2KxfCjmGfn1oYJWPuB";
+	public static final String	GCM_MESSAGE_KEY			= "message";
+	public static final String	GCM_COLLAPSE_KEY		= "score_update";
+	public static final int		GCM_TIME_TO_LIVE		= 108;
+	public static final boolean	GCM_DELAY_WHILE_IDLE	= false;
+	
+	// FCM 셋팅
+	public static final String	FCM_GOOGLE_SERVER_KEY	= "key=AAAAcRHML3M:APA91bG-b4UvFv59cSw0nuvUengHHAVl5rtmahCRnQH7w0R0rEg7UCTgWfhrVj18v1uAUq0yn9Re8xXCFqRqITcX5hWnmrBdxGxD1eK_K0FtxOH28EtAnsDqsNggADgDsYyF1EQarj3x";
+	public static final String	FCM_URL					= "http://fcm.googleapis.com/fcm/send";
+	public static final String	FCM_MESSAGE_KEY			= "message";
+	public static final String	FCM_COLLAPSE_KEY		= "score_update";
+	public static final int		FCM_TIME_TO_LIVE		= 108;
+	public static final boolean	FCM_DELAY_WHILE_IDLE	= false;
+	
+	// 240 이미지 path 생성
+	public static final String getImgPath_240(String imgPath)
+	{
+		return UPLOAD_FILE_PATH_240 + "/" + imgPath;
+	}
+
+	// 720 이미지 path 생성
+	public static final String getImgPath_720(String imgPath)
+	{
+		return UPLOAD_FILE_PATH_720 + "/" + imgPath;
+	}
+
+	// 원본 파일 경로 생성
+	public static final String getFilePath(String imgPath)
+	{
+		return UPLOAD_FILE_PATH_ORGIN + "/" + imgPath;
+	}
+
+}

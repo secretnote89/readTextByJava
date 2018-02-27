@@ -1,0 +1,14 @@
+package com.appg.Komca.common.push;
+
+public class PushConstants
+{
+
+	public static int	PUSH_DEVICE_TYPE_AND	= 1;
+	public static int	PUSH_DEVICE_TYPE_IOS	= 2;
+
+	// 푸시타입 정의
+	public static int	PUSH_TYPE_CHAT_MSG		= 1000;
+	public static int	PUSH_TYPE_CHAT_SCEDULE	= 1001;
+	public static int	PUSH_TYPE_CHAT_DESTORY	= 1002;
+
+}

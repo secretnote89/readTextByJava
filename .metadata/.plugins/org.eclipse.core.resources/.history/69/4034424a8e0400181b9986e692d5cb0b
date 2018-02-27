@@ -1,0 +1,120 @@
+package com.appg.Komca.common.excel;
+
+import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import jxl.Workbook;
+import jxl.format.Alignment;
+import jxl.format.Border;
+import jxl.format.BorderLineStyle;
+import jxl.format.Colour;
+import jxl.write.DateFormat;
+import jxl.write.Label;
+import jxl.write.NumberFormat;
+import jxl.write.WritableCellFormat;
+import jxl.write.WritableSheet;
+import jxl.write.WritableWorkbook;
+
+import org.springframework.web.servlet.view.document.AbstractJExcelView;
+
+import com.appg.Komca.common.bean.DataMap;
+
+
+public class StatisticExcel extends AbstractJExcelView
+{
+
+	protected void buildExcelDocument(Map<String, Object> model, WritableWorkbook workbook, HttpServletRequest request, HttpServletResponse response)
+			throws Exception
+	{
+		String fileName = createFileName();
+		//setFileNameToResponse(request, response, fileName);
+		
+		workbook = Workbook.createWorkbook(new File("C:/Users/khm/php/workspace/golfmon_web/" + fileName));
+		
+		String[] TitleArr = { "브랜드", 
+				"매장명", 
+				"TTMS명", 
+				"TTMS코드", 
+				"쿠폰명",
+				"식사권 상세",
+				"금액" ,
+				"사용수" ,
+				"총 금액" 
+				};
+
+		@SuppressWarnings("unchecked")
+		List<DataMap> list = (List<DataMap>) model.get("list");
+		
+		
+		WritableSheet sheet = workbook.createSheet("sheet", 0);
+		WritableCellFormat format = new WritableCellFormat();
+		WritableCellFormat format2 = new WritableCellFormat();
+
+		format.setBackground(Colour.GRAY_25);
+		format.setBorder(Border.ALL, BorderLineStyle.THIN);
+		format.setAlignment(Alignment.CENTRE);
+		format2.setAlignment(Alignment.CENTRE);
+
+		DateFormat userdatafmt = new DateFormat("yyyy-MM-DD hh:mm:ss");
+		WritableCellFormat dataformat = new WritableCellFormat(userdatafmt);
+		dataformat.setAlignment(Alignment.CENTRE);
+
+		NumberFormat primeNum = new NumberFormat("###,##0.00");
+		WritableCellFormat floatType = new WritableCellFormat(primeNum);
+		floatType.setAlignment(Alignment.CENTRE);
+
+		for (int i = 0; i < TitleArr.length; i++) {
+			sheet.addCell(new Label(i, 0, TitleArr[i], format));
+			sheet.setColumnView(i, 20);
+			if(i == 2){
+				sheet.setColumnView(i, 25);
+			}
+			
+		}
+		int row = 1;
+		for (Iterator<DataMap> iterator = list.iterator(); iterator.hasNext(); ) {
+			DataMap bean = (DataMap)iterator.next();
+			sheet.addCell(new Label(0, row, bean.getString("brandName"), format2));
+			sheet.addCell(new Label(1, row, bean.getString("post_title"), format2));
+			//sheet.addCell(new Label(2, row, String.valueOf(bean.getString("")), format2));
+			sheet.addCell(new Label(2, row, bean.getString("TTMSName"), format2));
+			sheet.addCell(new Label(3, row, bean.getString("TTMSCode"), format2));
+			sheet.addCell(new Label(4, row, bean.getString("couponName"), format2));
+			sheet.addCell(new Label(5, row, bean.getString("detail"), format2));
+			sheet.addCell(new Label(6, row, bean.getString("discount"), format2));
+			sheet.addCell(new Label(7, row, bean.getString("counts"), format2));
+			sheet.addCell(new Label(8, row, bean.getString("totalDiscount"), format2));
+			row++;
+		}
+	}
+
+	private void setFileNameToResponse(HttpServletRequest request, HttpServletResponse response, String fileName) throws UnsupportedEncodingException
+	{
+		String userAgent = request.getHeader("User-Agent");
+		
+		if (userAgent.indexOf("MSIE 5.5") >= 0) {
+			System.out.println("IF");
+			response.setContentType("doesn/matter;");
+			response.setHeader("Content-Disposition", "filename=\"" + new String(fileName.getBytes("KSC5601"), "8859_1") + "\"");
+			
+		} else {
+			System.out.println("ELSE");
+			response.setHeader("Content-Disposition", "attachment; filename=\"" + new String(fileName.getBytes("KSC5601"), "8859_1") + "\"");
+		}
+	}
+
+	private String createFileName() {
+		SimpleDateFormat fileFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+		return "차감내역" + 
+		"-" + fileFormat.format(new Date()) + ".xls";
+	}
+
+}

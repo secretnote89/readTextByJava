@@ -1,0 +1,60 @@
+package com.appg.Komca.interceptor;
+
+import javax.servlet.RequestDispatcher;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
+
+import com.appg.Komca.common.bean.RetJsonBean;
+import com.appg.Komca.common.exception.DefSeCode;
+import com.appg.Komca.mybatis.api.mapper.CommMapper;
+
+public class ChkTransaction extends HandlerInterceptorAdapter{
+	@Autowired	private CommMapper			commMapper;
+	
+	@Override
+	public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+
+		RetJsonBean retJsonBean = null;
+		boolean bool = true;
+		try {
+			
+			// 예외 URL
+			String exUrl = "/Komca/ApiCommon/intercepter";
+			// 요청 URL
+			String reqURI = request.getRequestURI();
+			System.out.println("요청 URL : "+reqURI);
+			
+			//서버시간 체크
+			int cnt = commMapper.getTransactionTime();
+			
+			//예외처리
+			//if(reqURI.equals(exUrl)) {
+			if(reqURI.contains("intercepter")) {
+				bool = true;
+			} else {
+				if(cnt == 1) { //정상
+					bool = true;
+				} else if(cnt == 0) {  //앱 종료
+					response.sendRedirect("/Komca/ApiCommon/intercepter");
+					bool = false;
+				}
+			} 
+			
+        } catch (Exception e) {
+        	retJsonBean = makeResultJson(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+        }
+		return bool;
+    }
+	
+	protected RetJsonBean makeResultJson(int returnCode, String returnMessage)
+	{
+		RetJsonBean resultData = new RetJsonBean();
+		resultData.setReturnCode(returnCode);
+		resultData.setReturnMessage(returnMessage);
+		return resultData;
+	}
+	 
+}

@@ -1,0 +1,164 @@
+package com.appg.Komca.mybatis.api.mapper;
+
+import java.util.List;
+
+import org.apache.ibatis.annotations.Param;
+import org.springframework.stereotype.Repository;
+
+import com.appg.Komca.common.bean.DataMap;
+import com.appg.Komca.common.push.DataBean;
+
+@Repository
+public interface CommMapper
+{
+	
+	/**
+	 * SMS 전송
+	 * @param params
+	 * @return
+	 */
+	public int insertSMS(DataMap params);
+	
+	/**
+	 * 상용구 내용 조회(SMS/제목)
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getMyContentList(DataMap params);
+	
+	/**
+	 * 시도 리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getSiDoList(DataMap params);
+	
+	/**
+	 * 시군구 리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getSiGunGuList(DataMap params);
+	
+	/**
+	 * 도로명 리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getDoroList(DataMap params);
+	
+	/**
+	 * 업종1 리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getGradNmList1(DataMap params);
+	
+	/**
+	 * 업종2 리스트
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getGradNmList2(DataMap params);
+	
+	/**
+	 * 코드조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getCodeList(DataMap params);
+	
+	/**
+	 * 무대공연 공통코드조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getPerformCodeList(DataMap params);
+	
+	/**
+	 * 무대공연 공통코드조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getAreaCodeList(DataMap params);
+	
+	/**
+	 * 무대공연 공통코드조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getBsconCodeList(DataMap params);
+	
+	/**
+	 * 담당자 업소연체율 조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getReportArrear(DataMap params);
+	
+	/**
+	 * 담당자(별) 징수율 조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getReportCollect(DataMap params);
+	
+	/**
+	 * 담당자(별) 징수율 조회
+	 * @param params
+	 * @return
+	 */
+	public List<DataMap> getReportGoso(DataMap params);
+	
+	/**
+	 * 상용구 설정
+	 * @param params
+	 * @return
+	 */
+	public int insertMyContent(DataMap params);
+	
+	/**
+	 * 상용구 설정
+	 * @param params
+	 * @return
+	 */
+	public int updateMyContent(DataMap params);
+	
+	/**
+	 * 상용구 설정
+	 * @param params
+	 * @return
+	 */
+	public int deleteMyContent(DataMap params);
+
+	/**
+	 * 중복 푸시키 삭제
+	 * @param params
+	 * @return
+	 */
+	public void deletePushKey(DataMap paramsMap);
+	
+	
+	/**
+	 * 푸시키 등록
+	 * @param params
+	 * @return
+	 */
+	public int insertPushKey(DataMap paramsMap);
+	
+	
+	/**
+	 * 푸시키 조회
+	 * @param params
+	 * @return
+	 */
+	public List<String> getPushKey();
+	
+	/**
+	 * 서버시간 체크
+	 * @param params
+	 * @return
+	 */
+	public int getTransactionTime();
+	
+}

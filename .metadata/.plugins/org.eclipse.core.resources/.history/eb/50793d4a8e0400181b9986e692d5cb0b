@@ -1,0 +1,61 @@
+package com.appg.Komca.common.bean.db;
+
+public class TeamChatBean
+{
+	private String	orgCd;
+	private String	orgNm;
+	private String	chatRoomCode;
+	private String	registDT;
+	private String	inDate;
+
+	public String getInDate()
+	{
+		return inDate;
+	}
+
+	public void setInDate(String inDate)
+	{
+		this.inDate = inDate;
+	}
+
+	public String getOrgCd()
+	{
+		return orgCd;
+	}
+
+	public void setOrgCd(String orgCd)
+	{
+		this.orgCd = orgCd;
+	}
+
+	public String getOrgNm()
+	{
+		return orgNm;
+	}
+
+	public void setOrgNm(String orgNm)
+	{
+		this.orgNm = orgNm;
+	}
+
+	public String getChatRoomCode()
+	{
+		return chatRoomCode;
+	}
+
+	public void setChatRoomCode(String chatRoomCode)
+	{
+		this.chatRoomCode = chatRoomCode;
+	}
+
+	public String getRegistDT()
+	{
+		return registDT;
+	}
+
+	public void setRegistDT(String registDT)
+	{
+		this.registDT = registDT;
+	}
+
+}

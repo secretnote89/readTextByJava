@@ -1,0 +1,1131 @@
+package com.appg.Komca.service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.json.JSONArray;
+import org.springframework.aop.scope.DefaultScopedObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.appg.Komca.common.bean.DataMap;
+import com.appg.Komca.common.bean.ListBean;
+import com.appg.Komca.common.constants.Constants;
+import com.appg.Komca.common.exception.DefSeCode;
+import com.appg.Komca.common.exception.ServiceException;
+import com.appg.Komca.common.util.DataUtil;
+import com.appg.Komca.common.util.JedisUtil;
+import com.appg.Komca.common.util.JsonUtil;
+import com.appg.Komca.common.util.ListPage;
+import com.appg.Komca.mybatis.api.mapper.CouponMapper;
+
+@Service
+public class SvcCoupon
+{
+	@Autowired CouponMapper couponMapper;
+	
+	/**
+	 * 쿠폰 등록
+	 * @param brand_fk
+	 * @param brandName
+	 * @param type
+	 * @param limitCount
+	 * @param status
+	 * @param sub_fk
+	 * @param sdate
+	 * @param edate
+	 * @param couponName
+	 * @param title
+	 * @param contents
+	 * @param img
+	 * @throws ServiceException
+	 */
+	public void insOfCoupon(int couponNumber, int brand_fk, String brandName, int type, int limitCount, int status, int sub_fk
+			, String sdate, String edate, String couponName, String title, String contents, String eventURL, String img
+			, String franchise, int isAll, String promotionImg, int onoff, int couponType, String etc, int discount) throws ServiceException{
+		int result = 0;
+		
+		try{
+			
+			JSONArray franchiseJson = JsonUtil.Arr.create(franchise);
+			List<String> franchiseList = new ArrayList<String>();
+			if(franchiseJson != null){
+				for(int i = 0; i < franchiseJson.length(); i++){
+					franchiseList.add(JsonUtil.Arr.getString(franchiseJson, i));
+					System.out.println(JsonUtil.Arr.getString(franchiseJson, i));
+				}
+			}
+			
+			DataMap params = new DataMap();
+
+			params.put("brand_fk", brand_fk);
+			params.put("brandName", brandName);
+			params.put("type", type);
+			params.put("limitCount", limitCount);
+			params.put("status", status);
+			params.put("sub_fk", sub_fk);
+			params.put("sdate", sdate);
+			params.put("edate", edate);
+			params.put("couponName", couponName);
+			params.put("title", title);
+			params.put("contents", contents);
+			params.put("eventURL", eventURL);
+			params.put("img", img);
+			params.put("promotionImg", promotionImg);
+			params.put("isAll", isAll);
+			params.put("onoff", onoff);
+			params.put("couponType", couponType);
+			params.put("etc", etc);
+			params.put("discount", discount);
+			
+			if(couponNumber != 0){
+				params.put("couponNumber", couponNumber);
+				result = couponMapper.modifyCoupon(params);
+			}
+			else{
+				result = couponMapper.insOfCoupon(params);
+			}
+			if(result < 1)
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+			params.put("franchiseList", franchiseList);
+			
+			if(couponNumber != 0){
+				couponMapper.deleteCouponEtc(couponNumber);
+			}
+			
+			if(franchiseList.size() > 0)
+				couponMapper.insOfCouponFranchise(params);
+			
+			// 오프라인 쿠폰일 경우
+			if(couponMapper.getIsPromotionCoupon(params.getInt("couponNumber")) == 0 && onoff == 2){
+				List<String> codeList = new ArrayList<String>();
+				for(int i = 0; i < limitCount; i++){
+					codeList.add(DataUtil.getRandomCode_Rand(9));
+					
+					if(codeList.size() == 4000){
+						try{
+							couponMapper.setPromotionCoupon(params.getInt("couponNumber"), codeList);
+						} catch(Exception e){
+							e.printStackTrace();
+							continue;
+						}
+						codeList = new ArrayList<String>();
+					}
+				}
+				
+				if(codeList.size() > 0){
+					try{
+						couponMapper.setPromotionCoupon(params.getInt("couponNumber"), codeList);
+					}catch(Exception e){
+						e.printStackTrace();
+						throw new ServiceException(-9990, "마지막 코드 insert error!! ["+codeList.size()+"]");
+					}
+				}
+				
+			}
+		}
+		
+		catch(ServiceException e){
+			throw e;
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+	}
+	
+	/**
+	 * 추천 쿠폰 등록 / 삭제
+	 * @param couponNumber
+	 * @param recommend
+	 * @throws ServiceException
+	 */
+	public void updateRecommendCoupon(int couponNumber, int recommend, int ord) throws ServiceException{
+		int result = 0;
+		
+		try{
+			
+			if(recommend == 4){
+				if(couponMapper.getPopularCouponCount() == 10 &&  recommend != 5)
+					throw new ServiceException(-1001, "인기 쿠폰은 10개 이상 등록하실 수 없습니다.");
+			}
+			else{
+				if(couponMapper.getRecommentCouponCount() == 5 && recommend != 1 && recommend != 5)
+					throw new ServiceException(-1001, "추천 쿠폰은 5개 이상 등록하실 수 없습니다.");
+			}
+			
+			result = couponMapper.updateRecommendCoupon(couponNumber, recommend, ord);
+			if(result < 1)
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+		}
+		catch(ServiceException e){
+			throw e;
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}		
+	}
+	
+	/**
+	 * 쿠폰관리 -> 리스트
+	 * @param cpage
+	 * @param searchText
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getCouponListAdmin(int cpage, String searchText, int type, String allCoupon, int pageType) throws ServiceException{
+		DataMap data = new DataMap();
+		try{
+			
+			
+			int pageSize = Constants.ROWPER_PAGE;
+			int blockSize = Constants.BLOCK_SIZE;
+			DataMap params = new DataMap();
+			
+			params.put("searchText", searchText);
+			params.put("type", type);
+			params.put("allCoupon", allCoupon);
+			params.put("pageType", pageType);
+			int totalCount = couponMapper.getCouponListCount(params);
+			
+			ListPage listPage = new ListPage(blockSize, pageSize, cpage, totalCount);
+			
+			int startNum = listPage.starNum;
+			int endNum = pageSize;
+			
+			//params.put("searchText", searchText);
+			params.put("startNum", startNum);
+			params.put("endNum", endNum);
+			
+			if(type != 0)
+				params.put("endNum", 99999);
+			
+			List<DataMap> list = couponMapper.getCouponListAdmin(params);
+			
+			if(list.size() > 0)
+			{
+				ListBean bean = new ListBean(blockSize, pageSize, cpage);
+				bean.commit(totalCount);
+
+				data.put("page", bean.getPage());
+				data.put("startBlock", bean.getStartPage());
+				data.put("endBlock", bean.getEndPage());
+				data.put("endPage", bean.getTotalPage());
+				data.put("isNextBlock", bean.getIsNextBlock());
+				data.put("isPrevBlock", bean.getIsPrevBlock());
+				data.put("virtualNum", bean.getVirtualNum());
+				//data.put("rnInfo", bean);
+			}
+			List<DataMap> topList = couponMapper.getTopCouponList(0);
+			
+			data.put("list", list);
+			data.put("topList", topList);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}	
+		return data;
+	}
+	
+	/**
+	 * 
+	 * @param lastCouponNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getMainCouponList(int lastCouponNumber, String area1, String area2, String area, int userNumber) throws ServiceException{
+		DataMap retData = new DataMap();
+		try{
+			
+			area2 = area2.equalsIgnoreCase("전체") ? "" : area2;
+			
+			DataMap params = new DataMap();
+			params.put("rowPerPage", Constants.ROWPER_PAGE);
+			params.put("key", "couponNumber");
+			params.put("value", lastCouponNumber);
+			params.put("area1", area1);
+			params.put("area2", area2);
+			params.put("area", area);
+			params.put("userNumber", userNumber);
+					
+			
+			/* 2016.06.16 테스트를 위한 redis 서버 비호출 
+			JedisUtil.initalizeJedisPool();
+			
+			String couponCountKey = Constants.REDIS_KEY_COUPON_COUNT + "_" + area + "_" + area1 + "_" + area2 + "_" + lastCouponNumber ;
+			
+			
+			JedisUtil.delRedisData(couponCountKey) ;
+			
+			Object couponCount	= null ;			
+			couponCount = JedisUtil.getRedisData(couponCountKey); // 캐시에서 조회
+			DataMap totalRows = null;
+			
+			if(couponCount != null)
+			{
+				totalRows = (DataMap)couponCount ;
+			}
+			else
+			{
+				totalRows = couponMapper.getMainCouponListPaging(params);
+				JedisUtil.delRedisData(couponCountKey) ;
+				JedisUtil.setRedisData(couponCountKey, totalRows, 60) ;
+			}
+			totalRows = couponMapper.getMainCouponListPaging(params);
+			int startNum = 0;
+			
+			if(lastCouponNumber > 0){
+				startNum = (int)Math.round(totalRows.getDouble("startNum"));
+			}
+
+			
+			//DataMap totalRows = couponMapper.getMainCouponListPaging(params); ;
+			//int startNum = 0;
+			
+//			if(lastCouponNumber > 0){
+//				startNum = (int)Math.round(totalRows.getDouble("startNum"));
+//			}
+			
+			params.put("startNum", startNum);
+			params.put("endNum", Constants.ROWPER_PAGE);
+			*/
+			
+			DataMap totalRows = couponMapper.getMainCouponListPaging(params); ;
+			int startNum = 0;
+			if(lastCouponNumber > 0){
+				startNum = (int)Math.round(totalRows.getDouble("startNum"));
+			}
+			
+			params.put("startNum", startNum);
+			params.put("endNum", Constants.ROWPER_PAGE);			
+			/* 2016.06.16 테스트를 위한 redis 서버 비호출 
+			String couponListKey = Constants.REDIS_KEY_COUPON_LIST + "_" + area + "_" + area1 + "_" + area2 + "_" + lastCouponNumber ;
+//			
+//			
+//			JedisUtil.delRedisData(couponListKey) ;
+			
+			Object couponList	= null ;
+			
+			couponList = JedisUtil.getRedisData(couponListKey); // 캐시에서 조회
+			
+			
+			List<DataMap> list = null ;
+			
+			if(couponList != null)
+			{
+				list = (List<DataMap>)couponList ;				
+			}
+			else
+			{
+				list = couponMapper.getMainCouponList(params);
+				JedisUtil.delRedisData(couponListKey) ;
+				JedisUtil.setRedisData(couponListKey, list, 60) ;				
+			}
+			
+			
+			
+			for(int i = 0 ; i < list.size() ; i++)
+			{
+				DataMap row = (DataMap)list.get(i) ;
+			
+				int couponNumber = row.getInt("couponNumber") ;
+				
+				// 2. redis 에서 마이쿠폰 조회 프로세스				
+				int isUseCoupon = 0 ;
+				int isCoupon = 0 ;
+				
+				String redisMyCouponKey = Constants.REDIS_KEY_COUPON_USE + "_" + userNumber ;
+				
+				Object myCouponObj		= null ;						
+				myCouponObj = JedisUtil.getRedisData(redisMyCouponKey); // 캐시에서 조회		
+				
+				DataMap	myCouponInfo 	= null ;
+				
+				if(userNumber != 0)
+				{
+					if(myCouponObj == null)		// redis에 나의 쿠폰 정보가 없다면 새로 담아야 함.
+					{
+						List<DataMap> myCouponList = null ;
+						myCouponList = couponMapper.getMyCouponListUseCache(userNumber) ;
+						myCouponInfo = new DataMap() ;
+						for(int j = 0 ; j < myCouponList.size() ; j++)
+						{
+							DataMap row2 = myCouponList.get(j) ;
+							
+							myCouponInfo.put(row2.getString("coupon_fk"), row2.getString("status", "N")) ;
+						}
+						
+						JedisUtil.delRedisData(redisMyCouponKey) ;
+						JedisUtil.setRedisData(redisMyCouponKey, myCouponInfo) ;
+					}
+					else						// redis에 나의 쿠폰 정보가 있다면
+					{
+						myCouponInfo = (DataMap)myCouponObj ;
+					}
+					
+					// 3. 사용여부 체크 프로세스					
+					if(myCouponInfo.hasKey(String.valueOf(couponNumber)))
+					// 3. 사용여부 체크 프로세스
+					if(myCouponInfo.hasKey(String.valueOf(couponNumber)))
+					{
+						isCoupon = 1 ;
+						isUseCoupon = ("Y".equals(myCouponInfo.getString(couponNumber, "N"))) ? 1 : 0 ;					
+					}					
+				}				
+				
+				row.put("isUseCoupon", isUseCoupon) ;
+				row.put("isCoupon", isCoupon) ;
+			}
+			*/
+			List<DataMap> list = couponMapper.getMainCouponList(params);
+			//list = couponMapper.getMainCouponList(params);
+			retData.put("couponList", list);
+			retData.put("rnInfo", totalRows);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}	
+		return retData;
+	}
+	
+		
+	/**
+	 * 쿠폰 상세
+	 * @param couponNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getCouponInfo(int couponNumber, int userNumber, int no) throws ServiceException{
+		DataMap retVal = null;
+		
+		try{
+			retVal = couponMapper.getCouponInfo(couponNumber, userNumber);
+			
+			if(retVal.getInt("onoff") == 2 && no != 0){
+				DataMap myVal = couponMapper.getMyCouponInfo(no); 
+				
+				if("Y".equals(myVal.getString("status"))){
+					retVal.put("isUseCoupon", 1);
+				}
+				else{
+					retVal.put("isUseCoupon", 0);
+					retVal.put("isCoupon", 1);
+				}
+			}
+			
+			// 1. redis 에서 쿠폰 상세 조회 프로세스
+//			JedisUtil.initalizeJedisPool();
+//			
+//			Object couponInfo	= null ;
+//			String redisCouponKey = Constants.REDIS_KEY_COUPON_INFO + "_" + couponNumber ;
+//			
+//			
+//			couponInfo = JedisUtil.getRedisData(redisCouponKey); // 캐시에서 조회
+//			
+//			// 쿠폰 정보가 없다면
+//			if(couponInfo == null)
+//			{
+//				retVal = couponMapper.getCouponInfo(couponNumber, userNumber);				
+//				JedisUtil.delRedisData(redisCouponKey) ;
+//				JedisUtil.setRedisData(redisCouponKey, retVal, 60) ;
+//			}
+//			else
+//			{
+//				retVal = (DataMap)couponInfo ;				
+//			}
+//			
+//			
+//			// 2. redis 에서 마이쿠폰 조회 프로세스
+//			int isCoupon = 0 ;
+//			int isUseCoupon = 0 ;
+//			
+//			String redisMyCouponKey = Constants.REDIS_KEY_COUPON_USE + "_" + userNumber ;
+//			
+//			Object myCouponObj		= null ;						
+//			myCouponObj = JedisUtil.getRedisData(redisMyCouponKey); // 캐시에서 조회			
+//			
+//			DataMap	myCouponInfo 	= null ;
+//			
+//			if(userNumber != 0)
+//			{
+//				if(myCouponObj == null)		// redis에 나의 쿠폰 정보가 없다면 새로 담아야 함.
+//				{
+//					List<DataMap> myCouponList = null ;
+//					myCouponList = couponMapper.getMyCouponListUseCache(userNumber) ;
+//					myCouponInfo = new DataMap() ;
+//					for(int i = 0 ; i < myCouponList.size() ; i++)
+//					{
+//						DataMap row = myCouponList.get(i) ;
+//						
+//						myCouponInfo.put(row.getString("coupon_fk"), row.getString("status", "N")) ;
+//					}
+//					
+//					JedisUtil.delRedisData(redisMyCouponKey) ;
+//					JedisUtil.setRedisData(redisMyCouponKey, myCouponInfo) ;
+//				}
+//				else						// redis에 나의 쿠폰 정보가 있다면
+//				{
+//					myCouponInfo = (DataMap)myCouponObj ;
+//				}
+//				
+//				// 3. 사용여부 체크 프로세스
+//				if(myCouponInfo.hasKey(String.valueOf(couponNumber)))
+//				{
+//					isCoupon = 1 ;
+//					isUseCoupon = ("Y".equals(myCouponInfo.getString(couponNumber, "N"))) ? 1 : 0 ;					
+//				}
+//			}
+//			
+//			retVal.put("isUseCoupon", isUseCoupon) ;
+//			retVal.put("isCoupon", isCoupon) ;
+			
+			if(retVal == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+		}
+		catch(ServiceException e){
+			throw e;
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}	
+		return retVal;
+	}
+	
+	/**
+	 * 쿠폰 상세 관리자
+	 * @param couponNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getCouponInfoAdmin(int couponNumber, int userNumber, int no) throws ServiceException{
+		DataMap retVal = null;
+		
+		try{
+			retVal = couponMapper.getCouponInfo(couponNumber, userNumber);
+			
+			if(retVal.getInt("onoff") == 2 && no != 0){
+				DataMap myVal = couponMapper.getMyCouponInfo(no); 
+				
+				if("Y".equals(myVal.getString("status"))){
+					retVal.put("isUseCoupon", 1);
+				}
+				else{
+					retVal.put("isUseCoupon", 0);
+					retVal.put("isCoupon", 1);
+				}
+			}
+
+			if(retVal == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+		}
+		catch(ServiceException e){
+			throw e;
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}	
+		return retVal;
+	}
+	
+	
+	/**
+	 * 브랜드 리스트
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getBrandList() throws ServiceException{
+		List<DataMap> list = null;
+		try{
+			list = couponMapper.getBrandList();
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}	
+		return list;
+	}
+	
+	/**
+	 * 브랜드 상세보기
+	 * @param no
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getBrandInfo(int no) throws ServiceException{
+		DataMap retVal = null;
+		try{
+			retVal = couponMapper.getBrandInfo(no);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}	
+		return retVal;		
+	}
+	
+	/**
+	 * 로고 업데이트
+	 * @param term_id
+	 * @param logo
+	 * @throws ServiceException
+	 */
+	public void updateBrandLogo(int term_id, String logo, String introduceImg, String introduceText) throws ServiceException{
+		int result = 0;
+		
+		try{
+			result = couponMapper.updateBrandLogo(logo, term_id, introduceImg, introduceText);
+			if(result < 1)
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+		}
+		catch(ServiceException e){
+			throw e;
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+	}
+	
+	/**
+	 * 쿠폰 받기
+	 * @param userNumber
+	 * @param couponNumber
+	 * @throws ServiceException
+	 */
+	public void receiveCoupon(int userNumber, int couponNumber) throws ServiceException{
+		int result = 0;
+		try{
+			if(couponMapper.getIsReceiveCoupon(userNumber, couponNumber) > 0)
+				throw new ServiceException(-1000, "이미 받은 쿠폰입니다.");
+			
+			if(couponMapper.getIsFinishCoupon(couponNumber) > 0)
+				throw new ServiceException(-1000, "해당 쿠폰은 매진되었습니다.");
+			
+			result = couponMapper.receiveCoupon(userNumber, couponNumber, "");
+			
+			if(result < 1)
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+			/*
+			JedisUtil.initalizeJedisPool();
+			
+			String redisMyCouponKey = Constants.REDIS_KEY_COUPON_USE + "_" + userNumber ;
+			
+			List<DataMap> myCouponList = null ;
+			myCouponList = couponMapper.getMyCouponListUseCache(userNumber) ;			
+			
+			DataMap myCouponInfo = new DataMap() ;
+			
+			for(int i = 0 ; i < myCouponList.size() ; i++)
+			{
+				DataMap row = myCouponList.get(i) ;
+				
+				myCouponInfo.put(row.getString("coupon_fk"), row.getString("status", "N")) ;
+			}
+			
+			JedisUtil.delRedisData(redisMyCouponKey) ;
+			JedisUtil.setRedisData(redisMyCouponKey, myCouponInfo) ;
+			*/
+		}
+		catch(ServiceException e){
+			throw e;
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+	}
+	
+	/**
+	 * 마이쿠폰 리스트
+	 * @param userNumber
+	 * @param lastCouponNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getMyCouponList(int userNumber, int lastCouponNumber, String orderType) throws ServiceException{
+		DataMap retData = new DataMap();
+		try{
+			DataMap params = new DataMap();
+			params.put("rowPerPage", Constants.ROWPER_PAGE);
+			params.put("key", "couponNumber");
+			params.put("value", lastCouponNumber);			
+			params.put("userNumber", userNumber);
+			params.put("orderType", orderType);
+			DataMap totalRows = couponMapper.getMyCouponListPaging(params);
+			
+			int startNum = 0;
+			
+			if(lastCouponNumber > 0)
+				startNum = totalRows.getInt("startNum");
+			
+			params.put("startNum", startNum);
+			params.put("endNum", Constants.ROWPER_PAGE);
+			
+			List<DataMap> list = couponMapper.getMyCouponList(params);
+			retData.put("couponList", list);
+			retData.put("rnInfo", totalRows);			
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return retData;
+	}
+	
+	
+	/**
+	 * 하는 역할
+	 * @param authCode
+	 * @param brandNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public String getPostTitle(String authCode, int brandNumber, int couponNumber) throws ServiceException{
+		
+		String postTitle = "";
+		
+		try {
+			postTitle = couponMapper.getPostTitle(authCode, brandNumber, couponNumber);
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		
+		return postTitle;
+		
+	}
+	
+	/**
+	 * 쿠폰 사용
+	 * @param sub_fk
+	 * @param authCode
+	 * @param userNumber
+	 * @param no
+	 * @throws ServiceException
+	 */
+	public String useAuthCode(String sub_fk, String authCode, int userNumber, int couponNumber, int no) throws ServiceException{
+		int result = 0;
+		String franchiseName = "";
+		try{
+
+			if(couponMapper.getIsUseCouponStartDate(couponNumber) == 0)
+                throw new ServiceException(-1000, "쿠폰 사용기간이 아닙니다.");
+
+			if(couponMapper.useAuthCode(couponNumber, authCode) == 0){
+				throw new ServiceException(-1000, "쿠폰 인증번호가 잘못되었습니다.");
+			}
+			else{
+				
+				DataMap info = couponMapper.getCouponInfo(couponNumber, userNumber);
+				
+				if(info.getInt("onoff") == 2 && no != 0){
+					DataMap myVal = couponMapper.getMyCouponInfo(no);
+					
+					if(couponMapper.getIsRefundCoupon(myVal.getString("code")) == -1)
+						throw new ServiceException(-1000, "환불처리된 쿠폰은 사용이 불가능 합니다.");
+					
+					result = couponMapper.usePromotionCoupon(authCode, no);
+					
+					if(result > 0)
+						couponMapper.updateUsePromotionFinal(myVal.getString("code"), userNumber);
+						
+				}
+				else{
+					if(couponMapper.getIsUseCoupon(couponNumber, userNumber) > 0)
+						throw new ServiceException(-1000, "이미 사용 한 쿠폰입니다.");
+					
+					if(no == 0){
+						
+						no = couponMapper.getMyCouponNo(couponNumber, userNumber);
+						
+						if(no == 0)
+							throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+					}
+					
+					result = couponMapper.useCoupon(couponNumber, userNumber, authCode, no);
+				}
+				
+				if(result < 1)
+					throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);				
+				
+				/*
+				JedisUtil.initalizeJedisPool();
+				
+				String redisMyCouponKey = Constants.REDIS_KEY_COUPON_USE + "_" + userNumber ;
+				
+				List<DataMap> myCouponList = null ;
+				myCouponList = couponMapper.getMyCouponListUseCache(userNumber) ;			
+				
+				DataMap myCouponInfo = new DataMap() ;
+				
+				for(int i = 0 ; i < myCouponList.size() ; i++)
+				{
+					DataMap row = myCouponList.get(i) ;
+					
+					myCouponInfo.put(row.getString("coupon_fk"), row.getString("status", "N")) ;
+				}
+				
+				JedisUtil.delRedisData(redisMyCouponKey) ;
+				JedisUtil.setRedisData(redisMyCouponKey, myCouponInfo) ;
+				*/
+			}
+			
+			franchiseName = couponMapper.getFranchiseNameByAuthCode(authCode);
+		}
+		catch(ServiceException e){
+			throw e;
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		
+		return franchiseName;
+	}
+	
+	/**
+	 * 추천쿠폰
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getRecommendCouponList(int type) throws ServiceException{
+		List<DataMap> list = null;
+		
+		try{
+			
+			list = couponMapper.getRecommendCouponList(type);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		
+		return list;
+	}
+	
+	/**
+	 * 주변 쿠폰 리스트
+	 * @param latitude
+	 * @param longitude
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getSurroundCouponList(double latitude, double longitude) throws ServiceException{
+		List<DataMap> list = null;
+		try{
+			DataMap params = new DataMap();
+			params.put("latitude", latitude);
+			params.put("longitude", longitude);
+			list = couponMapper.getSurroundCouponList(params);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;
+	}
+	
+	/**
+	 * 가맹점 리스트
+	 * @param brandNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getFranchiseList(int brandNumber) throws ServiceException{
+		List<DataMap> list = null;
+		try{
+			list = couponMapper.getFranchiseList(brandNumber);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;
+	}
+	
+	
+	/**
+	 * 쿠폰삭제
+	 * @param couponNumber
+	 * @throws ServiceException
+	 */
+	public void deleteCoupon(int couponNumber) throws ServiceException{
+		int result = 0;
+		try{
+			couponMapper.deleteCoupon(couponNumber);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+	}
+	
+	/**
+	 * 브랜드 쿠폰 리스트
+	 * @param userNumber
+	 * @param brandNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getBrandCouponList(int userNumber, int brandNumber) throws ServiceException{
+		List<DataMap> list = null;
+		try{
+			list = couponMapper.getBrandCouponList(userNumber, brandNumber);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;
+	}
+	
+	/**
+	 * 매장 검색
+	 * @param area
+	 * @param brandNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getSearchFranchiseList(String area1, String area2, String area, int brandNumber) throws ServiceException{
+		List<DataMap> list = null;
+		try{
+			DataMap params = new DataMap();
+			params.put("area", area);
+			params.put("area1", area1);
+			params.put("area2", area2);
+			params.put("brandNumber", brandNumber);
+			list = couponMapper.getSearchFranchiseList(params);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;
+	}
+	
+	/**
+	 * 매장 상세 정보
+	 * @param post_id
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getFranchiseInfo(int post_id, int term_id) throws ServiceException{
+		List<DataMap> list = null;
+		try{
+			list = couponMapper.getFranchiseInfo(post_id, term_id);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;
+	}
+	
+	/**
+	 * 쿠폰 통계
+	 * @param couponNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getCouponStatistic(int couponNumber) throws ServiceException{
+		List<DataMap> list = null;
+		try{
+			list = couponMapper.getCouponStatistic(couponNumber);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;
+	}
+	
+	/**
+	 * 엑셀 출력용 쿠폰리스트
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getCouponListExportExcel() throws ServiceException{
+		List<DataMap> list = null;
+		try{
+			list = couponMapper.getCouponListExportExcel();
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;		
+	}
+	
+	/**
+	 * 쿠폰 사용 통계 상세
+	 * @param couponNumber
+	 * @param date
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getCouponStatisticDetail(int couponNumber, String date) throws ServiceException{
+		List<DataMap> list = null;
+		
+		try{
+			list = couponMapper.getCouponStatisticDetail(couponNumber, date);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}		
+		
+		return list;
+	}
+	
+	/**
+	 * 상위노출 쿠폰
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getTopCouponList(int userNumber) throws ServiceException{
+		DataMap retVal = new DataMap();
+		
+		try{
+			List<DataMap> popularList = couponMapper.getPopularCouponList(userNumber);
+			List<DataMap> topList = couponMapper.getTopCouponList(userNumber);
+			
+			retVal.put("popularList", popularList);
+			retVal.put("topList", topList);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}				
+		return retVal;
+	}
+	
+	/**
+	 * 오프라인 쿠폰 사용
+	 * @param userNumber
+	 * @param code
+	 * @throws ServiceException
+	 */
+	public void useCouponCode(int userNumber, String code) throws ServiceException{
+		int result = 0;
+		try{
+			String couponNumber = couponMapper.getCouponNumberByCode(code);
+
+//			if(couponMapper.getIsReceiveCoupon(userNumber, Integer.valueOf(couponNumber)) > 0)
+//			throw new ServiceException(-1000, "이미 받은 쿠폰입니다.");
+			
+			if(couponNumber == null)
+				throw new ServiceException(-1000, "일치하는 쿠폰번호가 없습니다.");
+			
+			if(couponMapper.getIsRefundCoupon(code) == -1)
+				throw new ServiceException(-1000, "사용할 수 없는 쿠폰번호입니다.");
+			
+			if(couponMapper.getIsUseCode(code) > 0)
+				throw new ServiceException(-1000, "이미 사용된 쿠폰번호 입니다."); 
+			
+			if(couponMapper.getIsFinishCoupon(Integer.valueOf(couponNumber)) > 0)
+				throw new ServiceException(-1000, "해당 쿠폰은 매진되었습니다.");
+			
+			if(couponMapper.getCouponEdate(Integer.valueOf(couponNumber)) == 0)
+				throw new ServiceException(-1000, "쿠폰 사용기한이 지났습니다."); 
+			
+			result = couponMapper.receiveCoupon(userNumber, Integer.valueOf(couponNumber), code);
+			
+			if(result < 1)
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+			couponMapper.updateDownloadPromotion(code, userNumber);
+			
+		}
+		catch(ServiceException e){
+			throw e;
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}	
+	}
+	
+	/**
+	 * 프로모션 코드 내역
+	 * @param couponNumber
+	 * @param cpage
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getPromotionCouponList(int couponNumber, int cpage, int type, String code) throws ServiceException{
+		DataMap retVal = new DataMap();
+		int rowPerPage = Constants.ROWPER_PAGE;
+		int blockSize = Constants.BLOCK_SIZE;
+		
+		if(type == 1){
+			rowPerPage = 100000;
+		}
+		try{
+			int totalCount = couponMapper.getPromotionCouponListCount(couponNumber, code);
+			
+			ListPage listPage = new ListPage(blockSize, rowPerPage, cpage, totalCount);
+			
+			int startNum = listPage.starNum;
+			int endNum = listPage.endNum;
+			
+			DataMap params = new DataMap();
+			params.put("couponNumber", couponNumber);
+			params.put("startNum", startNum);
+			params.put("endNum", rowPerPage);
+			params.put("searchCode", code);
+			
+			List<DataMap> list = couponMapper.getPromotionCouponList(params);
+			
+			retVal.put("list", list);
+			ListBean bean = new ListBean(blockSize, rowPerPage, cpage);
+			bean.commit(totalCount);
+			retVal.put("page", bean.getPage());
+			retVal.put("startBlock", bean.getStartPage());
+			retVal.put("endBlock", bean.getEndPage());
+			retVal.put("endPage", bean.getTotalPage());
+			retVal.put("isNextBlock", bean.getIsNextBlock());
+			retVal.put("isPrevBlock", bean.getIsPrevBlock());
+			retVal.put("virtualNum", bean.getVirtualNum());			
+			
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}		
+		return retVal;
+	}
+	
+	/**
+	 * 쿠폰 환불처리
+	 * @param code
+	 * @throws ServiceException
+	 */
+	public void setRefundCouponCode(String code) throws ServiceException{
+		int result = 0;
+		try{
+			result = couponMapper.setRefundCouponCode(code);
+			
+			if("Y".equals(couponMapper.getPromotionCouponInfo(code)))
+				throw new ServiceException(-1000, "이미 사용한 쿠폰은 환불처리가 불가능합니다.");
+			
+			if(result < 1)
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+		}
+		catch(ServiceException e){
+			throw e;
+		}
+		catch(Exception e){
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}		
+		
+	}
+}

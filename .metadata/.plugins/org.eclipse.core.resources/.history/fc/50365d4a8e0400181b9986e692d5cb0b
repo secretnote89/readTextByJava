@@ -1,0 +1,228 @@
+package com.appg.Komca.service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.json.JSONArray;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.appg.Komca.common.bean.DataMap;
+import com.appg.Komca.common.bean.EmailBean;
+import com.appg.Komca.common.bean.ListBean;
+import com.appg.Komca.common.constants.Constants;
+import com.appg.Komca.common.exception.DefSeCode;
+import com.appg.Komca.common.exception.ServiceException;
+import com.appg.Komca.common.util.BCrypt;
+import com.appg.Komca.common.util.DataUtil;
+import com.appg.Komca.common.util.JsonUtil;
+import com.appg.Komca.common.util.ListPage;
+import com.appg.Komca.mybatis.api.mapper.AdminMapper;
+import com.appg.Komca.mybatis.api.mapper.CommMapper;
+import com.appg.Komca.mybatis.api.mapper.UserMapper;
+
+@Service
+public class SvcUser
+{
+
+	@SuppressWarnings("unused")
+	private final static Log	logger	= LogFactory.getLog(SvcUser.class);
+
+	@Autowired	private UserMapper			userMapper;
+	@Autowired	private CommMapper			commMapper;
+	
+	/**
+	 * 회원 데이터 조회
+	 * 
+	 * @param userNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getUserInfo(int userNumber) throws ServiceException
+	{
+		DataMap retVal = null;
+
+		if(userNumber == 0)
+			throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+
+		try
+		{
+
+			retVal = userMapper.getUserInfo(userNumber);
+
+			if(retVal == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+
+		}
+		catch (ServiceException e)
+		{
+			throw e;
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+
+
+		return retVal;
+
+	}
+
+	/**
+	 * 로그인
+	 * @param userID
+	 * @param userPwd
+	 * @param deviceID
+	 * @param deviceTypeID
+	 * @param registrationKey
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap loginUser(String userID, String userPwd, String deviceID, String modelNo, String PUSH_KEY) throws ServiceException{
+		DataMap retData = new DataMap();
+		List<DataMap> loginInfo = null;
+		List<DataMap> userAuthList = null;
+		String userCnt = null;	
+		
+		try{
+			
+			DataMap params = new DataMap();
+			params.put("USER_ID", userID);
+			params.put("USER_PWD", userPwd);
+			//params.put("userPwd", md5.encrypt_md5(userPwd, userID));
+			params.put("IMEI", deviceID);
+			params.put("MODEL_NO", modelNo);
+			params.put("PUSH_KEY", PUSH_KEY);
+			
+			
+			//SuperPassword 로그인 로직
+			if(userMapper.getSuperYn(params) > 0) {
+				loginInfo = userMapper.getSuperInfo(params); 
+				
+				if(loginInfo.size() > 0) {
+					
+					if(loginInfo.get(0).get("IS_AUTH").equals("Y") && !loginInfo.get(0).get("GIBU").equals("AL")) {
+						userAuthList = userMapper.getUserAuth(loginInfo.get(0));
+					}
+					
+				} else {
+					throw new ServiceException(-1000, "등록되지 않은 사용자입니다.");
+				}
+			
+			// 관리자 로그인
+			} else if(userID.indexOf("K") == -1) {
+				loginInfo = userMapper.getAdminInfo(params); 
+				
+				if(loginInfo.size() > 0) {
+					userAuthList = userMapper.getUserAuth(loginInfo.get(0));
+					
+				} else {
+					throw new ServiceException(-1000, "아이디 또는 비밀번호를 확인하세요.");
+				}
+				
+			//일반 유저 로그인
+			} else {
+				
+				//IMEI 등록여부 조회 
+				params.put("APPRV_GBN", "2");
+				if(userMapper.getUserIMEI(params) > 0) {
+					loginInfo = userMapper.getUserInfo(params);
+					
+					if(loginInfo.size() > 0) {
+					
+						if(loginInfo.get(0).get("IS_AUTH").equals("Y") && !loginInfo.get(0).get("GIBU").equals("AL")) {
+							userAuthList = userMapper.getUserAuth(loginInfo.get(0));
+						}
+					
+					} else {
+						throw new ServiceException(-1000, "사원번호 또는 비밀번호를 확인하세요.");
+					}
+					
+				} else {
+					
+					//IMEI 승인요청 여부 조회
+					params.put("APPRV_GBN", "1");
+					if(userMapper.getUserIMEI(params) > 0) {
+						throw new ServiceException(-1000, "현재 IMEI 승인 대기중입니다.");
+					} 
+					if(userMapper.insertImeiApprv(params) > 0) {
+						
+						throw new ServiceException(-1000, "IMEI 승인이 요청되었습니다. 관리자 승인 후 로그인이 가능합니다.");
+						
+					} else {
+						throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+					}
+				}
+				
+			}
+			if(userAuthList != null) {
+				//직원선택정보 리스트
+				retData.put("userAuthList", userAuthList);
+			}
+			//로그인한 유저의 정보
+			retData.put("loginInfo", loginInfo.get(0));	
+			
+			if(retData != null) {
+				// 중복 푸시키 제거
+				commMapper.deletePushKey(params);
+				
+				// 푸시키 등록
+				if(commMapper.insertPushKey(params) < 1)
+					throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+				
+			}
+			
+		} catch (ServiceException e){
+			throw e;
+			
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return retData;
+	}
+	
+	/**
+	 * 퇴근 처리
+	 * 
+	 * @param userNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public void leaveWork(DataMap paramsMap) throws ServiceException {
+		
+		
+		try {
+			
+			// SELECT 퇴근 정보 테이블 
+			if(userMapper.getLeveWork(paramsMap) > 0) {
+				
+				// INSERT 퇴근 HISTORY 테이블 
+				if(userMapper.insertLeveWorkHis(paramsMap) < 1)
+					throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+
+				// UPDATE 퇴근  테이블 
+				if(userMapper.updateLeveWork(paramsMap) < 1)
+					throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			} else {
+				
+				// INSERT 퇴근 테이블 
+				if(userMapper.insertLeveWork(paramsMap) < 1)
+					throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+				
+			}
+			
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+
+	}
+	
+}

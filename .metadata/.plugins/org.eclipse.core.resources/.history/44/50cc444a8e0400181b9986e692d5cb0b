@@ -1,0 +1,162 @@
+package com.appg.Komca.common.push;
+
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
+import java.util.List;
+import java.util.Map.Entry;
+
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
+import org.apache.commons.httpclient.HttpMethod;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.conn.ssl.SSLSocketFactory;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import com.appg.Komca.common.constants.Constants;
+import com.appg.Komca.common.util.DateUtil;
+import com.appg.Komca.common.util.FileLogUtil;
+import com.appg.Komca.common.util.JsonUtil;
+import com.google.android.gcm.server.Message;
+import com.google.android.gcm.server.Result;
+import com.google.android.gcm.server.Sender;
+import com.google.android.gcm.server.Message.Builder;
+
+public class FCMSender {
+	
+	private final boolean	mIsDebug			= Constants.IS_DEBUG;
+	private final String	mLogPath			= Constants.LOG_PATH_BASE;
+
+	// Put your Google API Server Key here
+	private final String	mGoogleServerKey	= Constants.FCM_GOOGLE_SERVER_KEY;
+	private final String	mMessageKey			= Constants.FCM_MESSAGE_KEY;
+	private final String	mCollapseKey		= Constants.FCM_COLLAPSE_KEY;
+
+	// timeToLive - 메세지 생존시간
+	private final int		mTimeToLive			= Constants.FCM_TIME_TO_LIVE;
+
+	// delayWhileIdle - false : 절전시간과 상관없이 전송 / true : 절전시간일 경우 안감
+	private final boolean	mDelayWhileIdle		= false;
+
+	// FCM URL
+	private final String	mFcmUrl				= Constants.FCM_URL;
+	
+	/**
+	 * 단체 푸시 전송
+	 * 
+	 * @param registrationKey
+	 * @param userMessage
+	 * @throws IOException 
+	 */
+	public void sendPush(List<String> registrationKeys, DataBean data) throws IOException
+	{
+		Result result = null;
+		BufferedReader in = null;
+		if(registrationKeys == null || data == null || data.getMessage().equals(""))
+			return;
+
+		try
+		{
+			for(int i=0; i<registrationKeys.size(); i++)
+			{
+				
+				URL url = new URL(mFcmUrl);
+				HttpURLConnection con = (HttpURLConnection) url.openConnection();
+				
+				con.setDoOutput(true);
+				con.setUseCaches(false);
+				con.setRequestProperty("Content-Type", "application/json");
+			    con.setRequestProperty("Authorization", mGoogleServerKey);
+			    con.setRequestMethod("POST");
+				
+				String msgData = toString_PushData(data, registrationKeys.get(i));
+				OutputStreamWriter os = new OutputStreamWriter(con.getOutputStream());
+				os.write(msgData);
+				os.flush();
+				os.close();
+
+				StringBuilder sb = new StringBuilder();  
+			    int HttpResult =con.getResponseCode(); 
+			    if(HttpResult ==HttpURLConnection.HTTP_OK){
+			 
+			        BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream(),"utf-8"));  
+			 
+			        String line = null;  
+			 
+			        while ((line = br.readLine()) != null) {  
+			        	sb.append(line + "\n");  
+			        }  
+			 
+			        br.close();  
+			 
+			        System.out.println(""+sb.toString());  
+			 
+			    }else{
+			        System.out.println(con.getResponseMessage());  
+			    }  
+			}
+
+		}
+		catch (IOException ioe)
+		{
+			ioe.printStackTrace();
+			System.out.println("RegId required : " + ioe.toString());
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			System.out.println("pushStatus : " + e.toString());
+		}
+
+	}
+	
+	private JSONObject toJson_PushData(DataBean data, String registrationKeys)
+	{
+
+		JSONObject json    = new JSONObject();
+		JSONObject msgObj  = new JSONObject();
+		JSONObject toObj   = new JSONObject();
+		JsonUtil.Obj.put(msgObj, "message", data.getMessage());
+		JsonUtil.Obj.put(msgObj, "type", "0");
+		JsonUtil.Obj.put(toObj , "to", registrationKeys);
+		try {
+			json.put("data", msgObj);
+			json.put("to", registrationKeys);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+
+		for (Entry<String, String> entry : data.getCustomData().entrySet())
+		{
+			JsonUtil.Obj.put(json, entry.getKey(), entry.getValue());
+		}
+
+		return json;
+	}
+	
+	private String toString_PushData(DataBean data, String registrationKeys)
+	{
+		return toJson_PushData(data, registrationKeys).toString();
+	}
+	
+
+	
+}

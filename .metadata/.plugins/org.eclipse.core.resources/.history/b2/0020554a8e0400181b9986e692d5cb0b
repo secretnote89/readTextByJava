@@ -1,0 +1,140 @@
+package com.appg.Komca.mybatis.api.mapper;
+
+import java.util.List;
+import java.util.Map;
+
+import org.apache.ibatis.annotations.Param;
+import org.springframework.stereotype.Repository;
+
+import com.appg.Komca.common.bean.DataMap;
+
+@Repository
+public interface CouponMapper
+{
+	public int insOfCoupon(DataMap params);
+	
+	public int insOfCouponFranchise(DataMap params);
+	
+	public int modifyCoupon(DataMap params);
+	
+	public int updateRecommendCoupon(@Param("couponNumber") int couponNumber, @Param("recommend") int recommend, @Param("ord") int ord);
+	
+	public int getPopularCouponCount();
+	
+	public int getRecommentCouponCount();
+	
+	public List<DataMap> getCouponListAdmin(DataMap params);
+	
+	public int getCouponListCount(DataMap params);
+	
+	public DataMap getMainCouponListPaging(DataMap params);
+	
+	public List<DataMap> getMainCouponList(DataMap params);
+	
+	public List<DataMap> getBrandList();
+	
+	public DataMap getCouponInfo(@Param("couponNumber") int couponNumber, @Param("userNumber") int userNumber);
+	
+	
+	
+	public List<DataMap> getMyCouponListUseCache(@Param("userNumber") int userNumber);
+	
+	
+	
+	public DataMap getBrandInfo(int no);
+	
+	public int updateBrandLogo(@Param("logo") String logo, @Param("term_id") int term_id, @Param("introduceImg") String introduceImg, @Param("introduceText") String introduceText);
+	
+	public int receiveCoupon(@Param("userNumber") int userNumber, @Param("couponNumber") int couponNumber, @Param("code") String code);
+	
+	public int getIsReceiveCoupon(@Param("userNumber") int userNumber, @Param("couponNumber") int couponNumber);
+	
+	public int getIsFinishCoupon(int couponNumber);
+	
+	public DataMap getMyCouponListPaging(DataMap params);
+	
+	public List<DataMap> getMyCouponList(DataMap params);
+	
+	public int useAuthCode(@Param("couponNumber") int couponNumber, @Param("authCode") String authCode);
+	
+	public String getPostTitle(@Param("authCode") String authCode, @Param("brandNumber") int brandNumber, @Param("couponNumber") int couponNumber); 
+	
+	public int useCoupon(@Param("couponNumber") int couponNumber, @Param("userNumber") int userNumber, @Param("authCode") String authCode, @Param("no") int no);
+	
+	public int usePromotionCoupon(@Param("authCode") String authCode, @Param("no") int no);
+	
+	public int getIsUseCoupon(@Param("couponNumber") int couponNumber, @Param("userNumber") int userNumber);
+	
+	public List<DataMap> getRecommendCouponList(@Param("type") int type);
+	
+	public List<DataMap> getSurroundCouponList(DataMap params);
+	
+	public List<DataMap> getFranchiseList(int brandNumber);
+	
+	public String getFranchiseNameByAuthCode(String authCode);
+	
+	public int deleteCoupon(int couponNumber);
+
+	public int deleteCouponEtc(int couponNumber);
+	
+	public List<DataMap> getBrandCouponList(@Param("userNumber") int userNumber, @Param("brandNumber") int brandNumber);
+	
+	public List<DataMap> getSearchFranchiseList(DataMap params);
+	
+	public List<DataMap> getFranchiseInfo(@Param("post_id") int post_id, @Param("term_id") int term_id);
+	
+	public List<DataMap> getCouponStatistic(int couponNumber);
+	
+	public List<DataMap> getCouponListExportExcel();
+	
+	public List<DataMap> getCouponStatisticDetail(@Param("couponNumber") int couponNumber, @Param("date") String date);
+	
+	public List<DataMap> getUserMyCouponList(int userNumber);
+	
+	public int getIsPromotionCoupon(int couponNumber);
+	
+	public int setPromotionCoupon(@Param("couponNumber") int couponNumber, @Param("list") List<String> list);
+	
+	public List<DataMap> getPromotionCoupon();
+	
+	public int updatePromotionCouponCount(@Param("promotionNumber") int promotionNumber, @Param("counts") int counts);
+	
+	public int updateTopCoupon(@Param("couponNumber") int couponNumber, @Param("ord") int ord, @Param("isTop") int isTop);
+	
+	public int getTopCouponCount();
+	
+	public List<DataMap> getTopCouponList(int userNumber);
+	
+	public List<DataMap> getPopularCouponList(int userNumber);
+	
+	public String getCouponNumberByCode(String code);
+	
+	public int updateDownloadPromotion(@Param("code") String code, @Param("userNumber") int userNumber);
+	
+	public int updateUsePromotionFinal(@Param("code") String code, @Param("userNumber") int userNumber);
+	
+	public int updateUsePromotion(@Param("userNumber") int userNumber, @Param("couponNumber") int couponNumber);
+	
+	public int getPromotionCouponListCount(@Param("couponNumber") int couponNumber, @Param("searchCode") String searchCode);
+	public List<DataMap> getPromotionCouponList(DataMap params);
+	
+	public int getIsUseCouponStartDate(int couponNumber);
+	
+	public int getMyCouponListTotalCount();
+	
+	public List<DataMap> getMyCouponTotalList(int maxCount);
+	
+	public int getIsUseCode(String code);
+	
+	public DataMap getMyCouponInfo(int no);
+	
+	public int getCouponEdate(int couponNumber);
+	
+	public int getIsRefundCoupon(String code);
+	
+	public int setRefundCouponCode(String code);
+	
+	public String getPromotionCouponInfo(String code);
+	
+	public int getMyCouponNo(@Param("couponNumber") int couponNumber, @Param("userNumber") int userNumber);
+}

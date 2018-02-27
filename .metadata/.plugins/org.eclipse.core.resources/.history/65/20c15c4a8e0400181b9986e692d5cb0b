@@ -1,0 +1,1273 @@
+package com.appg.Komca.service;
+
+import helma.util.StringUtils;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.poi.hssf.record.IterationRecord;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.tags.ParamAware;
+
+import com.appg.Komca.common.bean.DataMap;
+import com.appg.Komca.common.exception.DefSeCode;
+import com.appg.Komca.common.exception.ServiceException;
+import com.appg.Komca.common.util.DataUtil;
+import com.appg.Komca.mybatis.api.mapper.UpsoMapper;
+
+@Service
+public class SvcUpso {
+	
+	@SuppressWarnings("unused")
+	private final static Log	logger	= LogFactory.getLog(SvcUser.class);
+	
+	@Autowired	private UpsoMapper			upsoMapper;
+	
+	/**
+	 * 업소 리스트(검색)
+	 * 
+	 * @param userNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getSearchUpsoList(DataMap paramsMap) 
+			throws ServiceException {
+		
+		List<DataMap> upsoList = null;
+		
+		try {
+			
+			DataMap params = new DataMap();
+			
+			upsoList = upsoMapper.getSearchUpsoList(paramsMap);
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+
+		return upsoList;
+
+	}
+	
+	/**
+	 * 업소 리스트(지도)
+	 * 
+	 * @param userNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getUpsoList(DataMap paramsMap) 
+			throws ServiceException {
+		
+		List<DataMap> upsoList = null;
+		DataMap Map = new DataMap();
+		try {
+			upsoList = upsoMapper.getUpsoList(paramsMap);
+			/*for(int i =0; i<upsoList.size(); i++) {
+				if(upsoList.get(i).get("UPSO_GBN").equals("G") || upsoList.get(i).get("UPSO_GBN").equals("BG")) {
+					
+					if(upsoList.get(i).get("GBN").equals("노래방")) {
+						Map = upsoMapper.getUpsoSing(upsoList.get(i).get("ROW_NUM"));
+						
+					} else if(upsoList.get(i).get("GBN").equals("단란")) {
+						Map = upsoMapper.getUpsoDanLan(upsoList.get(i).get("ROW_NUM"));
+						
+					} else if(upsoList.get(i).get("GBN").equals("유흥")) {
+						Map = upsoMapper.getUpsoPleasure(upsoList.get(i).get("ROW_NUM"));
+						
+					}
+					upsoList.add(i,Map);
+				} else if (upsoList.get(i).get("UPSO_GBN").equals("N")) {
+					Map = upsoMapper.getUpsoNew(upsoList.get(i).get("UPSO_CD"));
+					
+				}
+			}*/
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+
+		return upsoList;
+
+	}
+	
+	/**
+	 * 정부 3.0업소 상세
+	 * 
+	 * @param userNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getUpsoGovDetail(DataMap paramsMap) 
+			throws ServiceException {
+		
+		DataMap Map = new DataMap();
+		try {
+			if(paramsMap.getString("GBN").equals("노래방")) {
+				Map = upsoMapper.getUpsoSing(paramsMap);
+				
+			} else if(paramsMap.getString("GBN").equals("단란")) {
+				Map = upsoMapper.getUpsoDanLan(paramsMap);
+				
+			} else if(paramsMap.getString("GBN").equals("유흥")) {
+				Map = upsoMapper.getUpsoPleasure(paramsMap);
+			}
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+
+		return Map;
+
+	}
+	
+	
+	/**
+	 * 업소 리스트(정부3.0)
+	 * 
+	 * @param userNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getGovUpsoList(String addr, String upsoNm, String siGunGu) 
+			throws ServiceException {
+		
+		DataMap retVal = new DataMap();
+		List<DataMap> govUpsoList = null;
+
+		try {
+			
+			DataMap params = new DataMap();
+			params.put("addr"	  	, addr);
+			params.put("upsoNm"		, upsoNm);
+			params.put("siGunGu"	, siGunGu);
+
+			govUpsoList = upsoMapper.getGovUpsoList(params);
+
+			/*if(retVal == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+
+		} catch (ServiceException e) {
+			throw e;*/
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+
+		return retVal;
+
+	}
+	
+	/**
+	 * 업소리스트(신규개발)
+	 * 
+	 * @param userNumber
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getNewUpsoList(String startCntMon, String endCntMon, String addr, String upsoNm, String bstypCd, String gibu, String userID) 
+			throws ServiceException {
+		
+		DataMap retVal = new DataMap();
+		List<DataMap> newUpsoList = null;
+
+		try {
+			
+			DataMap params = new DataMap();
+			params.put("startCntMon", startCntMon);
+			params.put("endCntMon"	, endCntMon);
+			params.put("addr"	  	, addr);
+			params.put("upsoNm"		, upsoNm);
+			params.put("bstypCd"	, bstypCd);
+			params.put("gibu"		, gibu);
+			params.put("userID"		, userID);
+
+			newUpsoList = upsoMapper.getNewUpsoList(params);
+
+			/*if(retVal == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+
+		} catch (ServiceException e) {
+			throw e;*/
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+
+		return retVal;
+	}
+	
+	/**
+	 * 업소 상세조회
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getUpsoDetail(String upsoCD, String startCntMon, String endCntMon) throws ServiceException {
+		DataMap retVal = new DataMap();
+		DataMap upsoInfoDetail = null;
+		List<DataMap> upsoNoteDetail = null;
+		
+		try {
+			
+			DataMap params = new DataMap();
+			
+			if(upsoCD == null || upsoCD.equals("")) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			params.put("UPSO_CD"	  	, upsoCD);
+			params.put("startCntMon"	, startCntMon);
+			params.put("endCntMon"	  	, endCntMon);
+			upsoInfoDetail = upsoMapper.getUpsoDetail(params);
+			upsoNoteDetail = upsoMapper.getUpsoNoteDetail(params);
+
+			if(upsoInfoDetail == null || upsoNoteDetail == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+			retVal.put("upsoInfoDetail", upsoInfoDetail);
+			retVal.put("upsoNoteDetail", upsoNoteDetail);
+
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+
+		return retVal;
+
+	}
+
+	/**
+	 * 상용구 내용 조회(SMS/제목)
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getMyContentList(String GIBU, String USER_ID, String CONTENT_TYPE) throws ServiceException {
+		/*
+		 *  ################################
+		 *  STEP 1 : 상용구 내용 조회(SMS/제목)
+		 *  ################################
+		*/
+		DataMap retVal = new DataMap();
+		List<DataMap> myContentList = null;
+		
+		try {
+			
+			DataMap params = new DataMap();
+			
+			if(CONTENT_TYPE == null) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			params.put("GIBU"	  	 , GIBU);
+			params.put("USER_ID"  	 , USER_ID);
+			params.put("CONTENT_TYPE", CONTENT_TYPE);
+			
+			myContentList = upsoMapper.getMyContentList(params);
+
+			if(myContentList == null)
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return myContentList;
+	}
+	
+	
+	/**
+	 * SMS 전송
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public void sendSMS(String upsoCD, String  mngemStrNM, String mngemStrHP, String  msg, String upsoNM, String gibu, String userID) 
+			throws ServiceException {
+		/*
+		 *  ################################
+		 *  STEP 1 : SMS 전송
+		 *  ################################
+		*/
+		
+		int result = 0;
+		try {
+			
+			DataMap params = new DataMap();
+			
+			if((upsoCD == null || upsoCD.equals("")) || (msg == null || msg.equals("")) ) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			if(msg.getBytes().length > 80) {
+				params.put("sendType"	  	, "0");	
+			} else {
+				params.put("sendType"	  	, "1");
+			}
+			
+			params.put("UPSO_CD"	  	, upsoCD);
+			params.put("MNGEMSTR_NM"	, mngemStrNM);
+			params.put("MNGEMSTR_HPNUM"	, mngemStrHP);
+			params.put("MSG"			, msg);
+			params.put("UPSO_NM"	  	, upsoNM);
+			params.put("gibu"	  		, gibu);
+			params.put("USER_ID"	  	, userID);
+			
+			result = upsoMapper.insertSMS(params);
+
+			if(result < 1)
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+	}
+	
+	
+	/**
+	 * 방문업소 내역 리스트 조회
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getUpsoVisitList(DataMap paramsMap) throws ServiceException {
+
+		List<DataMap> UpsoVisitList = null;
+		List<DataMap> UpsoVisitDetail = new ArrayList<DataMap>();
+		//List<DataMap> UpsoVisitDetail = (List<DataMap>) new DataMap();
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			/*   ################################
+			 *  STEP 2 : 방문업소 내역 리스트 조회
+			 *  ################################
+			 */
+			UpsoVisitList = upsoMapper.getUpsoVisitList(paramsMap);
+			
+			if(UpsoVisitList == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+			for(int i=0; i<UpsoVisitList.size(); i++) {
+				
+				UpsoVisitDetail = upsoMapper.getUpsoVisitDetail(UpsoVisitList.get(i));
+				/*if(UpsoVisitDetail.size() < 1) {
+					UpsoVisitList.get(i).put("DetailList", null);*/
+				//} else {
+					UpsoVisitList.get(i).put("DetailList", UpsoVisitDetail);
+				//}
+				
+			}
+	
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return UpsoVisitList;
+	}
+	
+	/**
+	 * 방문업소 내역 상세조회
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getUpsoVisitDetail(DataMap paramsMap) throws ServiceException {
+
+		DataMap UpsoVisitDetail = new DataMap();
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */
+			if(!DataUtil.ChkParam(paramsMap)) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			/*  ################################
+			 *   STEP 2 : 방문업소 상세내역 조회
+			 *  ################################
+			 */
+			/*UpsoVisitDetail = upsoMapper.getUpsoVisitDetail(paramsMap);
+	
+			if(UpsoVisitDetail == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);*/
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return UpsoVisitDetail;
+	}
+	
+	/**
+	 * 방문업소 내역 등록
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap insertUpsoVisit(DataMap paramsMap, DataMap paramsMap2, JSONArray paramsList) throws ServiceException {
+
+		DataMap UpsoVisitDetail = new DataMap();
+		DataMap retVal = new DataMap();
+		String ActType = paramsMap2.getString("ACT_TYPE");
+		String visitSeq = null;
+		System.out.println(ActType);
+		System.out.println(paramsMap2.get("VISIT_NUM"));
+		JSONObject obj = new JSONObject(); 
+		JSONObject obj2 = new JSONObject(); 
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */
+			if(DataUtil.ChkParam(paramsMap)) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			paramsMap.putAll(paramsMap2);
+			
+			
+			/*  ####################################################
+			 *   STEP 2 : 최초 등록시 (수정, 삭제가 아닐 경우)
+			 *  #################################################### */
+			if(paramsMap.get("VISIT_SEQ") == null || paramsMap.get("VISIT_SEQ").equals("")) {
+				
+				/*  ####################################################
+				 *   STEP 2-1 : 방문등록 SEQ 획득
+				 *  	    ## 최초 등록에만 유효함.(VISIT_SEQ == NULL)
+				 *      	## VIST_SEQ가 없을 경우에만 유효함.
+				 *  #################################################### */
+				
+				visitSeq =  upsoMapper.getVisitSeq(paramsMap);
+				if(visitSeq == null || visitSeq.equals(""))
+					throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+				
+				paramsMap.put("VISIT_SEQ", visitSeq);
+				retVal.put("VISIT_SEQ"	 ,visitSeq);
+				/*  ####################################################
+				 *   STEP 2-2 : 방문 리스트 등록
+				 *  	    ## 최초 등록에만 유효함.?
+				 *  #################################################### */
+				if(upsoMapper.insertUpsoVisit(paramsMap) < 1)
+					throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+				
+				/*  ####################################################
+				 *   STEP 2-3 : 방문 사진 등록
+				 *  	    ## 최초 등록에만 유효함
+				 *  #################################################### */
+/*				if(upsoMapper.insertUpsoVisitAttch(paramsMap) < 1)
+					throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);*/
+				
+				/*  ####################################################
+				 *   STEP 2-4 : 방문상세등록
+				 *  	    ## 등록 할 방문상세 리스트가 있을 경우 유효.
+				 *  		## MAX(VISIT_NUM) +1 
+				 *  #################################################### */
+				if(paramsList != null ){
+					for(int i=0; i<paramsList.length(); i++ ) {
+						obj = paramsList.getJSONObject(i);
+						DataMap Map = new DataMap();
+						Map.put("UPSO_CD"  , obj.get("UPSO_CD"));
+						Map.put("VISIT_SEQ", visitSeq);
+						Map.put("JOB_GBN"  , obj.get("JOB_GBN"));
+						Map.put("USER_ID"  , obj.get("USER_ID"));
+						Map.put("DET_REMAK", obj.get("REMAK"));
+						if(upsoMapper.insertUpsoVisitDetail(Map) < 1)
+							throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+					}
+				}
+				
+				/*  ####################################################
+				 *   STEP 2-6 : 방문예정 UPDATE
+				 *  	    ## 최초 등록에만 유효함.
+				 *  #################################################### */
+				
+				upsoMapper.updateUpsoVisitPlan(paramsMap); 
+				
+				/*  ################################### END ############################################ */
+				
+				
+			/*  ####################################################
+			 *   STEP 2 : 방문내역 수정/상세삭제, 상세추가  일 경우 
+			 *  #################################################### */	
+			} else {
+				if(paramsMap.get("JOB_GBN").equals("U")) {
+					
+					for(int i=0; i<paramsList.length(); i++) {
+						obj2 = paramsList.getJSONObject(i);
+						DataMap map = new DataMap();
+						map.put("UPSO_CD"	, obj2.get("UPSO_CD"));
+						map.put("JOB_GBN"	, obj2.get("JOB_GBN"));
+						map.put("VISIT_SEQ"	, obj2.get("VISIT_SEQ"));
+						map.put("DET_REMAK" , obj2.get("REMAK"));
+						map.put("USER_ID"	, paramsMap.get("USER_ID"));
+						
+						if(obj2.get("ACT_TYPE").equals("U")) {
+							
+							map.put("VISIT_NUM" , obj2.get("VISIT_NUM"));
+							map.put("VISIT_DAY", obj2.get("VISIT_DAY"));
+							/*  ####################################################
+							 *   STEP 2-1 : 방문내역 수정
+							 *   	## VISIT_SEQ가 파라미터로 넘어 올 경우 유효 
+							 *  #################################################### */
+							if(upsoMapper.updateUpsoVisit(map) < 1) 
+								throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+							
+							/*  ####################################################
+							 *   STEP 2-2 : 방문내역 상세수정
+							 *   	## VISIT_SEQ가 파라미터로 넘어 올 경우 유효 
+							 *  #################################################### */
+							if(upsoMapper.updateUpsoVisitDetail(map) < 1) 
+								throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+							
+						} else if(obj2.get("ACT_TYPE").equals("D")) {
+							map.put("VISIT_DAY", obj2.get("VISIT_DAY"));
+							map.put("VISIT_NUM" , obj2.get("VISIT_NUM"));
+							/*  ####################################################
+							 *   STEP 2-2 : 방문내역 상세 삭제
+							 *   	## VISIT_SEQ가 파라미터로 넘어 올 경우 유효 
+							 *   	## VISIT_NUM이 파라미터로 넘어 올 경우 유효
+							 *  #################################################### */
+							
+							if(map.get("VISIT_NUM") != null && !map.get("VISIT_NUM").equals("")) {
+								if(upsoMapper.deleteUpsoVisitDetail(map) < 1) 
+									throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+							}
+							retVal.put("VISIT_SEQ", paramsMap.get("VISIT_SEQ"));
+							
+						} else if(obj2.get("ACT_TYPE").equals("I")) {
+							/*  ####################################################
+							 *   STEP 2-2 : 방문내역 상세 등록
+							 *   	## VISIT_SEQ가 파라미터로 넘어 올 경우 유효 
+							 *   	## VISIT_NUM이 파라미터로 넘어 올 경우 유효
+							 *  #################################################### */
+							
+							if(upsoMapper.insertUpsoVisitDetail(map) < 1)
+								throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+							
+						}
+					}
+				} 
+			}
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		System.out.println("retVal : "+retVal);
+		return retVal;
+	}
+	
+	
+	/**
+	 * 고소내역 및 리스트
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getUpsoAccuList(DataMap paramsMap) throws ServiceException {
+
+		List<DataMap> UpsoVisitList = null;
+		DataMap AMT	= new DataMap();
+		DataMap Map = new DataMap();
+		int totUseAmt = 0;
+		int ADD_USE_AMT = 0;
+		int CURRENT_USE_AMT = 0;
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			/*   ################################
+			 *  STEP 2 : 고소내역 및 리스트 조회
+			 *  ################################
+			 */
+			UpsoVisitList = upsoMapper.getUpsoAccuList(paramsMap);
+			
+			if(UpsoVisitList == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			int listSize = UpsoVisitList.size();
+			for(int i = 0; i < listSize; i++) {
+				
+				//현재 진행중인 사건인 경우?(완결일자가 null인 경우)
+				if(UpsoVisitList.get(i).get("COMPN_DAY") == null) {
+
+					Map = upsoMapper.getTotUseAmt(UpsoVisitList.get(i));
+					UpsoVisitList.get(i).put("CURRENT", Map);
+					/*if(Integer.parseInt((String) UpsoVisitList.get(i).get("ACCU_DAY")) < 20161101) {
+						totUseAmt = Integer.parseInt((String) TotUseAmt.get("TOT_USE_AMT"));
+						UpsoVisitList.get(i).put("ADD_USE_AMT"    , (int) (totUseAmt*0.3)); // 현재 침해가산금액
+						UpsoVisitList.get(i).put("CURRENT_USE_AMT", (int) (totUseAmt*1.3)); // 현재 총금액
+						UpsoVisitList.get(i).put("TOT_USE_AMT"	  , totUseAmt);
+					} else {
+						totUseAmt = Integer.parseInt((String) TotUseAmt.get("TOT_USE_AMT"));
+						UpsoVisitList.get(i).put("ADD_USE_AMT"    , (int)(totUseAmt*0.15)); // 현재 침해가산금액
+						UpsoVisitList.get(i).put("CURRENT_USE_AMT", (int) (totUseAmt*1.15)); // 현재 총금액
+						UpsoVisitList.get(i).put("TOT_USE_AMT"	  , totUseAmt);
+					}*/
+				} 
+			}
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return UpsoVisitList;
+	}
+	
+	/**
+	 * 고소 사건 진행과정 리스트
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getUpsoAccuMemoList(DataMap paramsMap) throws ServiceException {
+
+		List<DataMap> UpsoVisitList = null;
+		try {
+			
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			
+			/*   ################################
+			 *  STEP 2 : 고소 사건 진행과정 리스트
+			 *  ################################
+			 */
+			UpsoVisitList = upsoMapper.getUpsoAccuMemoList(paramsMap);
+	
+			if(UpsoVisitList == null)
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return UpsoVisitList;
+	}
+	
+	
+	/**
+	 * 신규업소 등록
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap insertNewUpso(DataMap paramsMap, DataMap paramsMap2) throws ServiceException {
+		DataMap retVal = new DataMap();
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) {
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			}
+			paramsMap.putAll(paramsMap2);
+			/*paramsMap.put("UPSO_PHON", paramsMap2.get("UPSO_PHON"));
+			paramsMap.put("STNDAMT", paramsMap2.get("STNDAMT"));
+			paramsMap.put("BSTYP_CD", paramsMap2.get("BSTYP_CD"));*/			
+			
+			
+			/*  ################################
+			 *   STEP 2 : UPSO_CD 조회
+			 *  ################################
+			 */  
+			paramsMap.put("UPSO_CD", upsoMapper.getSeqUpsoCd(paramsMap));
+			retVal.put("UPSO_CD", paramsMap.get("UPSO_CD"));
+			
+			/*  ################################
+			 *   STEP 3 : 신규업소 등록
+			 *  ################################
+			 */  
+			if(upsoMapper.insertNewUpso(paramsMap) < 1) 
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+			
+			/*  ################################
+			 *   STEP 4 : UPSO_MAP INSERT
+			 *  ################################
+			 */  
+			if(upsoMapper.insertUpsoMap(paramsMap) < 1) 
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return retVal;
+	}
+	
+	/**
+	 * 정부3.0 개발예정 업소 등록 
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public void setGovUpso(DataMap paramsMap, DataMap paramsMap2) throws ServiceException {
+
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) 
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			
+			
+			/*  ################################
+			 *   STEP 2 : 정부3.0 개발예정 업소 등록
+			 *  ################################
+			 */  
+			paramsMap.put("YUHEONG_GBN", paramsMap2.get("YUHEONG_GBN"));
+			if(upsoMapper.updateGovUpso(paramsMap) < 1) 
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+	}
+	
+	
+	/**
+	 * 정부 3.0 동일주소 조회
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getSameGovUpso(DataMap paramsMap) throws ServiceException {
+		
+		List<DataMap> list = null;
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) 
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			
+			
+			/*  ################################
+			 *   STEP 2 : 정부 3.0 동일주소 리스트
+			 *  ################################
+			 */  
+			
+			list = upsoMapper.getSameGovUpso(paramsMap);
+			
+			if(list == null) 
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;
+	}
+	
+	/**
+	 * 방문예정업소 리스트
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getUpsoScheduleList(DataMap paramsMap, DataMap paramsMap2) throws ServiceException {
+		
+		List<DataMap> list = null;
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) 
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			
+			
+			/*  ################################
+			 *   STEP 2 : 방문예정업소 리스트
+			 *  ################################
+			 */  
+			paramsMap.put("UPSO_CD", paramsMap2.get("UPSO_CD"));
+			paramsMap.put("UPSO_NM", paramsMap2.get("UPSO_NM"));
+			paramsMap.put("VISIT_DAY", paramsMap2.get("VISIT_DAY"));
+			
+			list = upsoMapper.getUpsoScheduleList(paramsMap);
+			
+			if(list == null) 
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;
+	}
+
+	/**
+	 * 미납업소 리스트
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getUpsoNoPayList(DataMap paramsMap, DataMap paramsMap2) throws ServiceException {
+		
+		List<DataMap> list = null;
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) 
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			
+			
+			/*  ################################
+			 *   STEP 2 : 미납업소 리스트
+			 *  ################################
+			 */  
+			paramsMap.putAll(paramsMap2);
+			list = upsoMapper.getUpsoNoPayList(paramsMap);
+			
+			if(list == null) 
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;
+	}
+	
+	/**
+	 * 무대공연 등록
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+public DataMap setPerform(DataMap paramsMap, DataMap paramsMap2, JSONArray paramsList) throws ServiceException {
+		
+		DataMap retVal = new DataMap();
+		JSONObject obj = new JSONObject(); 
+		try {
+			
+			/*  #######################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ####################################### */  
+			if(!DataUtil.ChkParam(paramsMap)) 
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			
+			//paramsMap.put("BSCON_CD", paramsMap2.get("BSCON_CD"));
+			paramsMap.putAll(paramsMap2);
+			/*  #######################################
+			 *   STEP 2 : 무대공연마스터 저장
+			 *  ####################################### */  
+			paramsMap.put("PRIOR_APPRV_NUM", upsoMapper.getPriorApprvNum(paramsMap));
+			retVal.put("PRIOR_APPRV_NUM", paramsMap.get("PRIOR_APPRV_NUM"));
+			
+			if(upsoMapper.insertPerformMaster(paramsMap) < 1) 
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+			/*  #######################################
+			 *   STEP 3 : 무대공연관리내역 저장		
+			 *  ####################################### */
+			if(paramsList != null ){
+				for(int i=0; i<paramsList.length(); i++ ) {
+					obj = paramsList.getJSONObject(i);
+					DataMap Map = new DataMap();
+					Map.put("PRIOR_APPRV_NUM", paramsMap.get("PRIOR_APPRV_NUM"));
+					Map.put("CTENT"    , obj.get("CTENT"));
+					Map.put("USER_ID"  , paramsMap.get("USER_ID"));
+					if(upsoMapper.insertPerformVisitTemp(Map) < 1) 
+						throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+				}
+			}
+			
+			/*  #######################################
+			 *   STEP 4 : 무대공연첨부파일 저장 --> apiCommon.uploadFiles 로 이동
+			 *  ####################################### */
+			/*for(int i=0; i<paramsList.size(); i++) {
+				paramsList.get(i).put("PRIOR_APPRV_NUM", paramsMap.get("PRIOR_APPRV_NUM") );
+				
+				if(upsoMapper.insertPerformFile(paramsList.get(i)) < 1 ) 
+					throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			}*/
+			
+			/*  #######################################
+			 *   STEP 5 : 무대공연위치등록을 위한 방문예정 등록
+			 *  ####################################### */
+				if(upsoMapper.insertUpsoVisitPlan(paramsMap) < 1 ) 
+					throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return retVal;
+	}
+	
+	/**
+	 * 무대공연관리내역 삭제
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public void setPerformDetail(DataMap paramsMap) throws ServiceException {
+
+		try {
+			
+			/*  #######################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ####################################### */  
+			if(!DataUtil.ChkParam(paramsMap)) 
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			
+			/*  #######################################
+			 *   STEP 2 : 무대공연관리내역 삭제
+			 *  ####################################### */
+				if(upsoMapper.deletePerformDetail(paramsMap) < 1 ) 
+					throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+	}
+	
+	/**
+	 * 무대공연관리내역 수정
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public void updatePerformDetail(DataMap paramsMap) throws ServiceException {
+
+		try {
+			
+			/*  #######################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ####################################### */  
+			if(!DataUtil.ChkParam(paramsMap)) 
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			
+			/*  #######################################
+			 *   STEP 2 : 무대공연관리내역 수정
+			 *  ####################################### */
+				if(upsoMapper.updatePerformDetail(paramsMap) < 1 ) 
+					throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+	}
+	
+	/**
+	 * 무대공연 리스트
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getPerformList(DataMap paramsMap) throws ServiceException {
+		
+		List<DataMap> list = null;
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) 
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			
+			
+			/*  ################################
+			 *   STEP 2 : 무대공연 조회
+			 *  ################################ */  
+			list = upsoMapper.getPerformList(paramsMap);
+			
+			if(list == null) 
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;
+	}
+	
+	/**
+	 * 무대공연관리 내역 리스트
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getPerformDetail(DataMap paramsMap) throws ServiceException {
+		
+		List<DataMap> list = null;
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) 
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			
+			
+			/*  ################################
+			 *   STEP 2 : 무대공연 조회
+			 *  ################################ */  
+			list = upsoMapper.getPerformDetailList(paramsMap);
+			
+			if(list == null) 
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;
+	}
+	
+	/**
+	 * 무대공연파일 리스트
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public List<DataMap> getPerformFile(DataMap paramsMap) throws ServiceException {
+		
+		List<DataMap> list = null;
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) 
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			
+			
+			/*  ################################
+			 *   STEP 2 : 무대공연파일 리스트 조회
+			 *  ################################ */  
+			list = upsoMapper.getPerformFile(paramsMap);
+			
+			if(list == null) 
+				throw new ServiceException(DefSeCode.NO_DATA_CODE, DefSeCode.NO_DATA_MSG);
+			
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return list;
+	}
+	
+	
+	/**
+	 * 업소리스트 동기화
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public void updateUpsoList(DataMap paramsMap) throws ServiceException {
+		
+		try {
+			
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) 
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			
+			
+			/*  ################################
+			 *   STEP 2 : DELETE UPSO_LIST TABLE
+			 *  ################################ */  
+			upsoMapper.deleteUpsoList(paramsMap);
+			
+			/*if(upsoMapper.deleteUpsoList(paramsMap) < 1 ) 
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);*/
+
+			
+			/*  ################################
+			 *   STEP 3 : INSERT UPSO_LIST TABLE (갱신)
+			 *  ################################ */  
+			upsoMapper.insertUpsoList(paramsMap);
+			
+			/*if(upsoMapper.insertUpsoList(paramsMap) < 1 ) 
+				throw new ServiceException(DefSeCode.NOT_DB_SAVE_CODE, DefSeCode.NOT_DB_SAVE_MSG);*/
+			
+
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+	}
+	
+	/**
+	 * 신규업소 상세
+	 * 
+	 * @param 
+	 * @return
+	 * @throws ServiceException
+	 */
+	public DataMap getNewUpsoDetail(DataMap paramsMap) throws ServiceException {
+		
+		DataMap map = new DataMap();
+		DataMap FileMap = new DataMap();
+		try {
+		
+			/*  ################################
+			 *   STEP 1 : 필수 파라미터 체크
+			 *  ################################
+			 */  
+			if(!DataUtil.ChkParam(paramsMap)) 
+				throw new ServiceException(DefSeCode.INVALID_PARAMS_CODE, DefSeCode.INVALID_PARAMS_MSG);
+			
+			
+			/*  ################################
+			 *   STEP 2 : SELECT NEW UPSO
+			 *  ################################ */  
+			map = upsoMapper.getNewUpsoDetail(paramsMap);
+			
+			
+			/*  ################################
+			 *   STEP 3 : SELECT NEW UPSO ATTACH
+			 *  ################################ */  
+			FileMap = upsoMapper.getNewUpsoFile(map);
+			
+			if(FileMap != null ) {
+				map.put("FILE_TEMPNM", FileMap.get("FILE_TEMPNM"));
+				map.put("FILE_ROUT"  , FileMap.get("FILE_ROUT"));
+				map.put("SEQ"		 , FileMap.get("SEQ"));
+			}
+
+		} catch (ServiceException e) {
+			throw e;
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new ServiceException(DefSeCode.BASIC_ERROR_CODE, DefSeCode.BASIC_ERROR_MSG);
+		}
+		return map;
+		
+	}
+	
+	
+}

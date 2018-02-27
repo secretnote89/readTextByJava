@@ -1,0 +1,806 @@
+package com.appg.Komca.common.upload;
+
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.RenderingHints;
+import java.awt.Transparency;
+import java.awt.geom.AffineTransform;
+import java.awt.image.BufferedImage;
+import java.awt.image.RenderedImage;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.sql.Blob;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Iterator;
+import java.util.List;
+import java.util.UUID;
+
+import javax.imageio.ImageIO;
+import javax.servlet.http.HttpServletRequest;
+import javax.swing.ImageIcon;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+
+import com.appg.Komca.common.constants.Constants;
+import com.sun.image.codec.jpeg.JPEGCodec ;
+
+public class FileUpload
+{
+	private final boolean	mIsDebug				= Constants.IS_DEBUG;
+	private final String	mUploadFilePathOrigin	= Constants.UPLOAD_FILE_PATH_ORGIN;
+
+	private final String	mImgResizePath_720		= Constants.UPLOAD_FILE_PATH_720;
+	private final String	mImgResizePath_240		= Constants.UPLOAD_FILE_PATH_240;
+	private final String	mImgReadPath			= Constants.READ_FILE_PATH_BASE;
+
+	private final int		mImgSize_240			= 240;
+	private final int		mImgSize_720			= 720;
+
+	private final long		mUploadMaxSize			= 1024 * 1024 * 100;						// 100MB
+	private final String[]	mPreventExtension		= { "php", "jsp", "java", "asp", "sh" };
+	private final Log		logger					= LogFactory.getLog(FileUpload.class);
+
+	/**
+	 * 파일 업로드
+	 * 
+	 * @param request
+	 * @return
+	 * @throws FileUploadException
+	 */
+	public List<FileBean> saveUploadFiles(HttpServletRequest request) throws FileUploadException
+	{
+		List<FileBean> saveList = new ArrayList<FileBean>();
+		saveList = this.execSaveUploadFiles(request, "", null);
+
+		return saveList;
+	}
+
+	/**
+	 * 파일 업로드
+	 * 
+	 * @param request
+	 * @param isMakeDateFolder
+	 * @return
+	 * @throws FileUploadException
+	 */
+	public List<FileBean> saveUploadFiles(HttpServletRequest request, boolean isMakeDateFolder) throws FileUploadException
+	{
+		List<FileBean> saveList = new ArrayList<FileBean>();
+		String subPath = "";
+
+		if(isMakeDateFolder)
+			subPath = getDatePath();
+
+		saveList = this.execSaveUploadFiles(request, subPath, null);
+
+		return saveList;
+	}
+
+	/**
+	 * 파일 업로드
+	 * 
+	 * @param request
+	 * @param isMakeDateFolder
+	 * @param availExtension
+	 * @return
+	 * @throws FileUploadException
+	 */
+	public List<FileBean> saveUploadFiles(HttpServletRequest request, boolean isMakeDateFolder, String[] availExtension) throws FileUploadException
+	{
+		List<FileBean> saveList = new ArrayList<FileBean>();
+		String subPath = "";
+
+		if(isMakeDateFolder)
+			subPath = getDatePath();
+
+		saveList = this.execSaveUploadFiles(request, subPath, availExtension);
+
+		return saveList;
+	}
+
+	/**
+	 * 파일 업로드
+	 * 
+	 * @param request
+	 * @param subPath
+	 * @return
+	 * @throws FileUploadException
+	 */
+	public List<FileBean> saveUploadFiles(HttpServletRequest request, String subPath) throws FileUploadException
+	{
+		List<FileBean> saveList = new ArrayList<FileBean>();
+
+		saveList = this.execSaveUploadFiles(request, subPath, null);
+
+		return saveList;
+	}
+
+	/**
+	 * 파일 업로드
+	 * 
+	 * @param request
+	 * @param subPath
+	 * @return
+	 * @throws FileUploadException
+	 */
+	public List<FileBean> saveUploadFiles(HttpServletRequest request, String subPath, boolean isMakeDateFolder) throws FileUploadException
+	{
+		List<FileBean> saveList = new ArrayList<FileBean>();
+
+		if(isMakeDateFolder)
+			subPath += "/" + getDatePath();
+
+		saveList = this.execSaveUploadFiles(request, subPath, null);
+
+		return saveList;
+	}
+	
+	/**
+	 * 파일 업로드
+	 * 
+	 * @param request
+	 * @param subPath
+	 * @return
+	 * @throws FileUploadException
+	 */
+	public List<FileBean> saveUploadFiles2(HttpServletRequest request, String subPath, boolean isMakeDateFolder) throws FileUploadException
+	{
+		List<FileBean> saveList = new ArrayList<FileBean>();
+
+		if(isMakeDateFolder)
+			subPath += "/" + getDatePath();
+
+		saveList = this.execSaveUploadFiles2(request, subPath, null);
+
+		return saveList;
+	}
+	
+	
+	/**
+	 * 파일 업로드
+	 * 
+	 * @param request
+	 * @param subPath
+	 * @param availExtension
+	 * @return
+	 * @throws FileUploadException
+	 */
+	public List<FileBean> saveUploadFiles(HttpServletRequest request, String subPath, String[] availExtension) throws FileUploadException
+	{
+		List<FileBean> saveList = new ArrayList<FileBean>();
+
+		saveList = this.execSaveUploadFiles(request, subPath, availExtension);
+
+		return saveList;
+	}
+
+	/**
+	 * 실제 파일 업로드
+	 * 
+	 * @param request
+	 * @throws FileUploadException
+	 */
+	private List<FileBean> execSaveUploadFiles(HttpServletRequest request, String subPath, String[] availExtension) throws FileUploadException
+	{
+		List<FileBean> saveList = new ArrayList<FileBean>();
+
+		MultipartHttpServletRequest multipartHttpServletRequest = (MultipartHttpServletRequest) request;
+		Iterator<String> iterator = multipartHttpServletRequest.getFileNames();
+		List<MultipartFile> uploadAbleFileList = new ArrayList<MultipartFile>();
+		String originalFileName = null;
+		String originalFileExtension = null;
+		String storedFileName = null;
+		String storePath = mUploadFilePathOrigin;
+
+		// 서브 날짜 폴더 생성
+		if(subPath != "")
+		{
+			storePath += "/" + subPath;
+		}
+
+		if(!makeDir(storePath))
+			throw new FileUploadException(FileUploadException.FUECode.DO_NOT_MAKE_DIR_CODE, FileUploadException.FUECode.DO_NOT_MAKE_DIR_MSG);
+
+		// 파일 사이즈 용량 체크 및 데이터 확인
+		while (iterator.hasNext())
+		{
+			MultipartFile multipartFile = multipartHttpServletRequest.getFile(iterator.next());
+			if(multipartFile.isEmpty() == false)
+			{
+				if(mIsDebug)
+				{
+					logger.info("======== FILE DATA ========");
+					logger.info("Name : " + multipartFile.getName());
+					logger.info("FileName : " + multipartFile.getOriginalFilename());
+					logger.info("ContentType : " + multipartFile.getContentType());
+					logger.info("Size : " + multipartFile.getSize());
+					logger.info("======== FILE DATA ========");
+				}
+
+				originalFileExtension = multipartFile.getOriginalFilename().substring(multipartFile.getOriginalFilename().lastIndexOf("."));
+
+				// 업로드 사이트 체크
+				if(multipartFile.getSize() > mUploadMaxSize || multipartFile.getSize() == 0)
+					throw new FileUploadException(FileUploadException.FUECode.FILE_SIZE_ERROR_CODE, FileUploadException.FUECode.FILE_SIZE_ERROR_MSG);
+
+				// 업로드 불가 파일 확장자 체크
+				if(!isValidFileExtension(originalFileExtension, mPreventExtension, false))
+					throw new FileUploadException(FileUploadException.FUECode.FILE_PREVENT_EXTENSION_ERROR_CODE, FileUploadException.FUECode.FILE_PREVENT_EXTENSION_ERROR_MSG);
+
+				// 업로드 가능 파일 확장자 체크
+				if(availExtension != null && !isValidFileExtension(originalFileExtension, availExtension, true))
+					throw new FileUploadException(FileUploadException.FUECode.FILE_AVAIL_EXTENSION_ERROR_CODE, FileUploadException.FUECode.FILE_AVAIL_EXTENSION_ERROR_MSG);
+
+				// 밸리데이션 통과한 파일 업로드 대상에 추가
+				uploadAbleFileList.add(multipartFile);
+
+			}
+		}
+
+		// 파일 업로드
+		for (MultipartFile multipartFile : uploadAbleFileList)
+		{
+			try
+			{
+
+				if(mIsDebug)
+				{
+					logger.info("======== UP TARGET FILE DATA ========");
+					logger.info("Name : " + multipartFile.getName());
+					logger.info("FileName : " + multipartFile.getOriginalFilename());
+					logger.info("ContentType : " + multipartFile.getContentType());
+					logger.info("Size : " + multipartFile.getSize());
+					logger.info("======== UP TARGET FILE DATA ========");
+				}
+				originalFileName = multipartFile.getOriginalFilename();
+				originalFileExtension = getExtension(originalFileName);
+				storedFileName = this.getUniqueFileName(originalFileExtension);
+				String fileUrlPath = ((subPath != "") ? subPath + "/" + storedFileName : storedFileName);
+
+				File file = new File(storePath + "/" + storedFileName);
+				multipartFile.transferTo(file);
+				
+				// 이미지일 경우 리사이즈
+				if(multipartFile.getContentType().startsWith("image/") )
+				{
+					execImageResize(storePath + "/" + storedFileName, originalFileExtension, mImgResizePath_720 + ((subPath != "") ? "/" + subPath : ""), storedFileName, mImgSize_720);
+					execImageResize(storePath + "/" + storedFileName, originalFileExtension, mImgResizePath_240 + ((subPath != "") ? "/" + subPath : ""), storedFileName, mImgSize_240);
+				}
+				else{
+//					execImageResize(storePath + "/" + storedFileName, originalFileExtension, mImgResizePath_720 + ((subPath != "") ? "/" + subPath : ""), storedFileName, mImgSize_720);
+//					execImageResize(storePath + "/" + storedFileName, originalFileExtension, mImgResizePath_240 + ((subPath != "") ? "/" + subPath : ""), storedFileName, mImgSize_240);
+				}
+//				else
+//				{
+//					try
+//					{
+//						Image img = ImageIO.read(file) ;
+//						execImageResize(storePath + "/" + storedFileName, originalFileExtension, mImgResizePath_720 + ((subPath != "") ? "/" + subPath : ""), storedFileName, mImgSize_720);
+//						execImageResize(storePath + "/" + storedFileName, originalFileExtension, mImgResizePath_240 + ((subPath != "") ? "/" + subPath : ""), storedFileName, mImgSize_240);
+//						
+//						logger.info("upload file image");
+//					}
+//					catch (Exception e)
+//					{
+//						logger.info("upload file not image");
+//					}
+//					
+//				}
+				
+
+				FileBean fileBean = new FileBean();
+				fileBean.setContentType(multipartFile.getContentType());
+				fileBean.setFileName(originalFileName);
+				fileBean.setFileSize(multipartFile.getSize());
+				fileBean.setFileUrlPath(fileUrlPath);
+				fileBean.setStoredFileName(storedFileName);
+				saveList.add(fileBean);
+			}
+			catch (IllegalStateException e)
+			{
+				e.printStackTrace();
+				continue;
+			}
+			catch (IOException e)
+			{
+				e.printStackTrace();
+				continue;
+			}
+
+		}
+
+		return saveList;
+	}
+	
+	
+	/**
+	 * 실제 파일 업로드
+	 * 
+	 * @param request
+	 * @throws FileUploadException
+	 */
+	private List<FileBean> execSaveUploadFiles2(HttpServletRequest request, String subPath, String[] availExtension) throws FileUploadException
+	{
+		List<FileBean> saveList = new ArrayList<FileBean>();
+
+		MultipartHttpServletRequest multipartHttpServletRequest = (MultipartHttpServletRequest) request;
+		Iterator<String> iterator = multipartHttpServletRequest.getFileNames();
+		List<MultipartFile> uploadAbleFileList = new ArrayList<MultipartFile>();
+		String originalFileName = null;
+		String originalFileExtension = null;
+		String storedFileName = null;
+		String storePath = mUploadFilePathOrigin;
+		String storeResizePath = mImgResizePath_720;
+		String readPath	= mImgReadPath;
+
+		// 서브 날짜 폴더 생성
+		if(subPath != "")
+		{
+			storePath += subPath;
+		}
+
+		if(!makeDir(storePath))
+			throw new FileUploadException(FileUploadException.FUECode.DO_NOT_MAKE_DIR_CODE, FileUploadException.FUECode.DO_NOT_MAKE_DIR_MSG);
+
+		// 파일 사이즈 용량 체크 및 데이터 확인
+		while (iterator.hasNext())
+		{
+			MultipartFile multipartFile = multipartHttpServletRequest.getFile(iterator.next());
+			if(multipartFile.isEmpty() == false)
+			{
+				if(mIsDebug)
+				{
+					logger.info("======== FILE DATA ========");
+					logger.info("Name : " + multipartFile.getName());
+					logger.info("FileName : " + multipartFile.getOriginalFilename());
+					logger.info("ContentType : " + multipartFile.getContentType());
+					logger.info("Size : " + multipartFile.getSize());
+					logger.info("======== FILE DATA ========");
+				}
+
+				originalFileExtension = multipartFile.getOriginalFilename().substring(multipartFile.getOriginalFilename().lastIndexOf("."));
+
+				// 업로드 사이트 체크
+				if(multipartFile.getSize() > mUploadMaxSize || multipartFile.getSize() == 0)
+					throw new FileUploadException(FileUploadException.FUECode.FILE_SIZE_ERROR_CODE, FileUploadException.FUECode.FILE_SIZE_ERROR_MSG);
+
+				// 업로드 불가 파일 확장자 체크
+				if(!isValidFileExtension(originalFileExtension, mPreventExtension, false))
+					throw new FileUploadException(FileUploadException.FUECode.FILE_PREVENT_EXTENSION_ERROR_CODE, FileUploadException.FUECode.FILE_PREVENT_EXTENSION_ERROR_MSG);
+
+				// 업로드 가능 파일 확장자 체크
+				if(availExtension != null && !isValidFileExtension(originalFileExtension, availExtension, true))
+					throw new FileUploadException(FileUploadException.FUECode.FILE_AVAIL_EXTENSION_ERROR_CODE, FileUploadException.FUECode.FILE_AVAIL_EXTENSION_ERROR_MSG);
+
+				// 밸리데이션 통과한 파일 업로드 대상에 추가
+				uploadAbleFileList.add(multipartFile);
+
+			}
+		}
+
+		// 파일 업로드
+		for (MultipartFile multipartFile : uploadAbleFileList)
+		{
+			try
+			{
+
+				if(mIsDebug)
+				{
+					logger.info("======== UP TARGET FILE DATA ========");
+					logger.info("Name : " + multipartFile.getName());
+					logger.info("FileName : " + multipartFile.getOriginalFilename());
+					logger.info("ContentType : " + multipartFile.getContentType());
+					logger.info("Size : " + multipartFile.getSize());
+					logger.info("DATA : " + multipartFile.getBytes());
+					logger.info("======== UP TARGET FILE DATA ========");
+				}
+				originalFileName = multipartFile.getOriginalFilename();
+				originalFileExtension = getExtension(originalFileName);
+				storedFileName = this.getUniqueFileName(originalFileExtension);
+				String fileUrlPath = ((subPath != "") ? subPath + "/" + storedFileName : storedFileName);
+
+				File file = new File(storePath + "/" + storedFileName);
+				FileBean fileBean = new FileBean();
+				fileBean.setContentType(multipartFile.getContentType());
+				fileBean.setFileName(originalFileName);
+				fileBean.setFileSize(multipartFile.getSize());
+				fileBean.setFileUrlPath(readPath+"/720"+subPath);
+				fileBean.setStoredFileName(storedFileName);
+				fileBean.setFileByte(multipartFile.getBytes());
+				multipartFile.transferTo(file);
+				
+				if(multipartFile.getContentType().startsWith("image/") )
+				{
+					execImageResize(storePath + "/" + storedFileName, originalFileExtension, mImgResizePath_720 + ((subPath != "") ? "/" + subPath : ""), storedFileName, mImgSize_720);
+				}
+				
+				// 원본 이미지 삭제
+				file.delete();
+				
+				/*if(multipartFile.getContentType().startsWith("image/") )
+				{
+					execImageResize(storePath + "/" + storedFileName, originalFileExtension, mImgResizePath_720 + ((subPath != "") ? "/" + subPath : ""), storedFileName, mImgSize_720);
+					execImageResize(storePath + "/" + storedFileName, originalFileExtension, mImgResizePath_240 + ((subPath != "") ? "/" + subPath : ""), storedFileName, mImgSize_240);
+				}*/
+				
+				saveList.add(fileBean);
+
+			}
+			catch (IllegalStateException e)
+			{
+				e.printStackTrace();
+				continue;
+			}
+			catch (IOException e)
+			{
+				e.printStackTrace();
+				continue;
+			}
+
+		}
+
+		return saveList;
+	}
+
+
+	/**
+	 * 파일 네임 생성
+	 * 
+	 * @return
+	 */
+	private String getUniqueFileName(String extension)
+	{
+		return UUID.randomUUID().toString().replaceAll("-", "") + "." + extension;
+	}
+
+	/**
+	 * 경로 생성
+	 * 
+	 * @param file
+	 * @return
+	 */
+	private boolean makeDir(String path)
+	{
+
+		File file = new File(path);
+
+		if(file.exists() == false)
+		{
+			return file.mkdirs();
+		}
+
+		return true;
+	}
+
+	/**
+	 * 날짜 경로 생성
+	 * 
+	 * @return
+	 */
+	private String getDatePath()
+	{
+		Calendar cal = Calendar.getInstance();
+		SimpleDateFormat df = new SimpleDateFormat("yyyyMMdd");
+		String ymd = df.format(cal.getTime());
+
+		return ymd;
+	}
+
+	/**
+	 * 확장자 체크
+	 * 
+	 * @param fileExtension
+	 * @param extensions
+	 * @return
+	 * @throws Exception
+	 */
+	private boolean isValidFileExtension(String fileExtension, String[] extensions, boolean isAvailValid)
+	{
+		boolean result = false;
+		if(fileExtension != null && !"".equals(fileExtension))
+		{
+			if(isAvailValid && isContainFileExtension(fileExtension, extensions))
+			{
+				result = true;
+			}
+			else if(!isAvailValid && !isContainFileExtension(fileExtension, extensions))
+			{
+				result = true;
+			}
+		}
+		else
+		{
+			result = false;
+		}
+
+		return result;
+	}
+
+	private boolean isContainFileExtension(String fileExtension, String[] extensions)
+	{
+		boolean result = false;
+		fileExtension = fileExtension.toLowerCase();
+		for (String ex : extensions)
+		{
+			ex = ex.toLowerCase();
+			if(fileExtension.equals(ex))
+			{
+				result = true;
+				break;
+			}
+		}
+		return result;
+	}
+
+	private String getExtension(String filename)
+	{
+		String extension = filename.substring(filename.lastIndexOf(".") + 1);
+
+		return extension;
+	}
+
+	/**
+	 * 이미지 리사이즈
+	 * 
+	 * @param originFile
+	 * @param extension
+	 * @param resizePath
+	 * @param imageSize
+	 */
+	private void execImageResize2(String originFilePath, String extension, String resizePath, String storedFileName, int imageSize)
+	{
+
+		if(!makeDir(resizePath))
+			return;
+
+		try
+		{
+			
+			
+			File originFile = new File(originFilePath);
+			BufferedImage image = ImageIO.read(originFile);
+			
+			double resizeRatio = 1.0 ;
+			
+			resizeRatio = (double)imageSize / image.getWidth() ;
+			
+			File targetFile = new File(resizePath + "/" + storedFileName);
+			
+			if(resizeRatio > 1)
+			{
+				ImageIO.write(image, extension, targetFile);
+				
+			}
+			else
+			{
+				int width = (int)(image.getWidth() *  resizeRatio);
+				int height = (int)(image.getHeight() *  resizeRatio);
+				
+				int type = (image.getTransparency() == Transparency.OPAQUE) ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB ;
+				
+				logger.info("**********************************************") ;
+				logger.info("execImageResize BufferedImage tyep  : " + type);
+				
+				
+				BufferedImage tempImage = new BufferedImage(width, height, type) ;
+				
+				
+				Graphics2D g2 = tempImage.createGraphics() ;
+				g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+				AffineTransform xform = AffineTransform.getScaleInstance(resizeRatio, resizeRatio) ;
+				g2.drawRenderedImage((RenderedImage)image, xform);
+				g2.dispose();
+				
+				ImageIO.write(tempImage, extension, targetFile);
+			}
+				
+
+			if(mIsDebug)
+			{
+				logger.info("originFilePath : " + originFilePath);
+				logger.info("resizeExtension : " + extension);
+				logger.info("resizePath : " + resizePath + "/" + storedFileName);
+			}
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+
+	}
+	
+	
+	private void execImageResize(String originFilePath, String extension, String resizePath, String storedFileName, int imageSize)
+	{
+		if(!makeDir(resizePath))
+			return;
+		
+		try
+		{
+			// 1. original image 취득
+			File targetFile = new File(resizePath + "/" + storedFileName);
+				
+			// 2. jpeg 대응하기 위해 파일을 imageICon을 이용해서 취득
+			Image image = new ImageIcon(originFilePath).getImage() ;
+	
+			// 3. image rgb type 결정
+			BufferedImage scaledImage = scaledImage = ImageIO.read(new File(originFilePath)) ; ;
+			int type = (scaledImage.getTransparency() == Transparency.OPAQUE) ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB ;
+			
+			/*
+			try
+			{
+				
+				
+			}
+			catch (Exception e)
+			{
+				
+				com.sun.image.codec.jpeg.JPEGImageDecoder jpegDecoder = JPEGCodec.createJPEGDecoder (new FileInputStream(originFilePath));
+
+				scaledImage = jpegDecoder.decodeAsBufferedImage();
+	
+				
+				
+			}
+			*/
+			
+			
+			
+			int width = scaledImage.getWidth() ;
+			int height = scaledImage.getHeight() ;
+
+			double multiStepRatio = 0.9 ;
+			
+			do{
+				if(width > imageSize * 2)
+				{
+					width *= multiStepRatio ;
+				}
+				else
+				{
+					double resizeRatio = 1.0 ;
+					resizeRatio = (double)imageSize / width ;
+					
+					width = (int)(width * resizeRatio) ;
+					height = (int)(height * resizeRatio) ;
+					
+					// 3. 임지 buffer image 생성
+					BufferedImage thumbImage = new BufferedImage(width, height, type) ;
+
+					Graphics2D g2 = thumbImage.createGraphics() ;
+					g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+					g2.setBackground(Color.WHITE);
+					g2.clearRect(0, 0, width, height);
+					g2.drawImage(image, 0, 0, width, height, null) ;
+					g2.dispose() ;
+					
+					
+					
+//					ImageIO.write(thumbImage, extension, targetFile);
+					
+					
+					
+					// 4. buffer write 
+//					BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(targetFile));
+//			        JPEGImageEncoder encoder = JPEGCodec.createJPEGEncoder(bos);
+//			        JPEGEncodeParam param = encoder.getDefaultJPEGEncodeParam(thumbImage);			        
+//			        param.setQuality((float)100 / 100.0f, false);			        
+//			        encoder.setJPEGEncodeParam(param);
+//			        encoder.encode(thumbImage);			        
+//			        bos.close();
+//			        
+//			        
+//			        logger.info("3. finish");
+			           
+					
+					scaledImage = thumbImage ;
+				}
+				
+			} while(width > imageSize) ;
+
+			 ImageIO.write(scaledImage, extension, targetFile);
+
+			if(mIsDebug)
+			{
+				logger.info("originFilePath : " + originFilePath);
+				logger.info("resizeExtension : " + extension);
+				logger.info("resizePath : " + resizePath + "/" + storedFileName);
+			}
+			
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace(); 
+		}
+		
+	}
+	
+	/**
+	 * 이미지 리사이즈
+	 * 
+	 * @param originFile
+	 * @param extension
+	 * @param resizePath
+	 * @param imageSize
+	 */
+	private void execImageResize3(String originFilePath, String extension, String resizePath, String storedFileName, int imageSize)
+	{
+
+		if(!makeDir(resizePath))
+			return;
+
+		try
+		{
+			
+			File originFile = new File(originFilePath);
+			
+			
+			
+			BufferedImage image = ImageIO.read(originFile);
+			
+			File targetFile = new File(resizePath + "/" + storedFileName);
+			
+			
+			int type = (image.getTransparency() == Transparency.OPAQUE) ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB ;
+			
+			BufferedImage scaledImage = (BufferedImage)image ;
+			
+			int width = image.getWidth() ;
+			int height = image.getHeight() ;
+			
+			double multiStepRatio = 0.9 ;
+			
+			do{
+				if(width > imageSize * 2)
+				{
+					width *= multiStepRatio ;
+				}
+				else
+				{
+					double resizeRatio = 1.0 ;
+					resizeRatio = (double)imageSize / width ;
+					
+					width = (int)(width * resizeRatio) ;
+					height = (int)(height * resizeRatio) ;
+					
+					BufferedImage tempImage = new BufferedImage(width, height, type) ;
+					
+					Graphics2D g2 = tempImage.createGraphics() ;
+					g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+					g2.drawImage(scaledImage, 0, 0, width, height, null) ;
+					g2.dispose() ;
+					
+					scaledImage = tempImage ;
+				}
+				
+			} while(width > imageSize) ;
+			
+			
+
+			ImageIO.write(scaledImage, extension, targetFile);
+			
+			
+
+			if(mIsDebug)
+			{
+				logger.info("originFilePath : " + originFilePath);
+				logger.info("resizeExtension : " + extension);
+				logger.info("resizePath : " + resizePath + "/" + storedFileName);
+			}
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+
+	}
+}

@@ -1,0 +1,52 @@
+package com.appg.Komca.quartz;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.scheduling.quartz.QuartzJobBean;
+
+import com.appg.Komca.common.bean.DataMap;
+import com.appg.Komca.common.push.DataBean;
+import com.appg.Komca.common.push.GCMSender;
+import com.appg.Komca.common.push.FCMSender;
+import com.appg.Komca.mybatis.api.mapper.CommMapper;
+import com.appg.Komca.mybatis.api.mapper.UserMapper;
+import com.appg.Komca.service.SvcUser;
+
+public class GcmLeaveWork extends QuartzJobBean {
+	private final static Log	logger	= LogFactory.getLog(SvcUser.class);
+	private ApplicationContext ctx;
+	private CommMapper			commMapper;
+	
+	@Override
+	protected void executeInternal(JobExecutionContext context)
+			throws JobExecutionException {
+		long time = System.currentTimeMillis();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
+        System.out.println("Cron trigger 1 (5 second): current time = " + sdf.format(time));
+        try
+		{
+        	ctx = (ApplicationContext)context.getJobDetail().getJobDataMap().get("applicationContext");
+        	CommMapper mapper = (CommMapper)ctx.getBean("commMapper");
+        	
+			//GCMSender GS = new GCMSender();
+			FCMSender FS = new FCMSender();
+        	//퇴근하지 않은 유저 푸시키 조회
+			List<String> registrationKeys = mapper.getPushKey();
+			DataBean pushDatas = new DataBean(0,"업무시간 종료되었습니다. 출장 퇴근처리 바랍니다");
+			FS.sendPush(registrationKeys, pushDatas);
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+}

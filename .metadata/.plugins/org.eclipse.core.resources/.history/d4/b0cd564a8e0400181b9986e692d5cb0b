@@ -1,0 +1,23 @@
+package com.appg.Komca.mybatis.api.mapperPol;
+
+import java.util.List;
+
+import org.springframework.stereotype.Repository;
+
+import com.appg.Komca.common.bean.DataMap;
+
+@Repository
+public interface PolytideMapper
+{
+	public List<DataMap> getBdTerms();
+	
+	public List<DataMap> getBdTermRelationShip();
+	
+	public List<DataMap> getBdPosts();
+	
+	public List<DataMap> getBdPostMeta();
+	
+	public DataMap getBrandInfo();
+	
+	public List<DataMap> getBdPostMetaConfirm();
+}
